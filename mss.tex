@@ -1,7 +1,7 @@
 \documentclass[twoside]{article}
 
 \usepackage{ustj}
-
+\usepackage{makecell}
 \usepackage{pdflscape}
 \renewcommand{\headrulewidth}{0pt}
 
@@ -200,14 +200,21 @@ The one subtlety is how a captured argument is embedded, which is dictated by ho
 
 Notably, the value forms of \texttt{B}, \texttt{C}, and \texttt{W} use only Nock opcodes 0 and 1. The opcode 2 appears only in the formula they assemble at application time (\lstinline[style=inlinecode]{[2 g [1 f]]}), carried as quoted data.  The combinators are pure construction; the application machinery is the structure they emit. Among the basis only \texttt{S} carries a 2 in its own body, because it performs two applications at once.
 
-The size payoff over bracket abstraction is large (cell counts; see Section~\ref{sxn:cost} for method):
+The size payoff over bracket abstraction is large (cell counts; see Section~\ref{sxn:cost} for method), as recorded in Table~\ref{tbl:direct}.
 
+\begin{table}
+\caption{Compiled Nock cell counts for various \texttt{SKI} terms, using direct derivation rather than bracket abstraction; compare to Table~\ref{tbl:cost}.}
+\label{tbl:direct}
+\centering
 \begin{tabular}{lccc}
- & direct & via \texttt{SKI} & ratio \\
-\texttt{B} & 11 & 208 & ~19× \\
-\texttt{C} & 11 & 208 & ~19× \\
-\texttt{W} & 6 & 130 & ~22× \\
+\hline \hline
+Combinator & Direct & Via \texttt{SKI} & Ratio \\
+\hline
+\texttt{B} & 11 & 208 & $\approx$19× \\
+\texttt{C} & 11 & 208 & $\approx$19× \\
+\texttt{W} & 6 & 130 & $\approx$22× \\
 \end{tabular}
+\end{table}
 
 The two forms are extensionally identical on every input tested.  For any combinator known by name, direct derivation is preferred and the abstraction tax is avoided entirely; bracket abstraction remains the general fallback for arbitrary lambda terms.
 
@@ -432,20 +439,11 @@ mult = λm.λn.λf. m (n f)
 plus = λm n. m succ n
 mult = λm n. m (plus n) (church 0)
 
-:: in Nock decoding:
+::  compiled in Nock SKI form
 plus = [[1 1 1 2] [1 0 1] [1 1 1 1] [1 1] 0 1]
 mult = [[1 1 2] [1 0 1] [1 1 1] [1 1] 0 1]
 
-succ (church 2)  =  church 3
-
-::  in Church numerals:
-church 0 succ 0   = 0
-church 3 succ 0   = [[1 2] [[1 2] [[1 2] 0 [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]
-church 5 succ 0   = 5
-(plus 2 3) succ 0 = 5
-(mult 3 4) succ 0 = 12
-
-::  in Nock decoding:
+::  in Nock decoding
 (*@\nocklfloor@*)church 0(*@\nockrfloor@*) = 0
 (*@\nocklfloor@*)church 3(*@\nockrfloor@*) = 3
 (*@\nocklfloor@*)church 5(*@\nockrfloor@*) = 5
@@ -457,16 +455,17 @@ church 5 succ 0   = 5
 \begin{table}
 \caption{Church numerals and their Nock \texttt{SKI} representations.  The numeral \texttt{church n} is a value (formula) that applies its first argument \texttt{n} times to its second.  The decoding \texttt{\nocklfloor n\nockrfloor = n inc 0} produces the Nock atom corresponding to the numeral.}
 \label{tbl:church-numerals}
+\centering
 \begin{tabular}{ccr}
 \hline \hline
-\texttt{n} & \texttt{⌊n⌋} & \texttt{church n} \\
+\texttt{n} & \texttt{⌊church n⌋} & \texttt{church n} \\
 \hline
 0 & 0 & \texttt{[1 0 1]} \\
 1 & 1 & \texttt{[[1 2] [1 0 1] [1 1] 0 1]} \\
 2 & 2 & \texttt{[[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1]} \\
 3 & 3 & \texttt{[[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\
 4 & 4 & \texttt{[[1 2] [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\
-% 5 & 5 & \texttt{[[1 2] [[1 2] [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\
+5 & 5 & \makecell[r]{\texttt{[[1 2] [[1 2] [[1 2] [[1 2] [[1 2] [1 0 1][1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\ \texttt{[1 1] 0 1] [1 1] 0 1]}} \\
 \hline
 \end{tabular}
 \end{table}
@@ -482,8 +481,9 @@ Any valid Nock \textsc{isa} interpreter should correctly evaluate the examples a
 The transformation is faithful but not frugal. Measuring \texttt{SKI} leaf count against compiled Nock cell count shows the extreme verbosity of the latter.  Table~\ref{tbl:cost} shows the compiled size of several terms, including the Church numerals and the named combinators.
 
 \begin{table}
-\caption{Compiled Nock cell counts for various \texttt{SKI} terms.}
+\caption{Compiled Nock cell counts for various \texttt{SKI} terms.  These numbers are via bracket abstraction; compare to Table~\ref{tbl:direct}.}
 \label{tbl:cost}
+\centering
 \begin{tabular}{lcc}
 \hline \hline
 Term & \texttt{SKI} leaves & Nock cells \\
@@ -500,7 +500,7 @@ Term & \texttt{SKI} leaves & Nock cells \\
 \end{tabular}
 \end{table}
 
-Compiled Nock runs roughly $8.5\times$ the \texttt{SKI} leaf count (a constant per combinator plus the opcode 2 application wrapper) and the \texttt{SKI} itself is already exponential in the worst case under naive bracket abstraction.  The natural number ten compiles to a 3168-cell formula as a Church numeral.  These figures are static, before reduction; at runtime `S` duplicates its argument into both branches with no sharing, so evaluation cost compounds on representation cost.
+Compiled Nock runs roughly $8.5\times$ the \texttt{SKI} leaf count (a constant per combinator plus the opcode 2 application wrapper) and the \texttt{SKI} itself is already exponential in the worst case under naive bracket abstraction.  The natural number ten compiles to a 3168-cell formula as a Church numeral.  These figures are static, before reduction; at runtime \texttt{S} duplicates its argument into both branches with no sharing, so evaluation cost compounds on representation cost.
 
 Named combinators escape this blow-up before the compiler stage:  derived directly rather than routed through bracket abstraction, \texttt{B}, \texttt{C}, and \texttt{W} are roughly twenty times smaller. The cost above is the price of the \emph{general} compiler on
 arbitrary terms, not a property of the targets themselves.
@@ -513,7 +513,7 @@ Three properties bound the construction. Each is a real boundary, not a deficien
 \begin{enumerate}
 \item \textbf{Call-by-value.} Opcode 2 is eager: \lstinline[style=inlinecode]{*[a 2 b c]} fully reduces \lstinline[style=inlinecode]{*[a b]} and \lstinline[style=inlinecode]{*[a c]} before applying.  The compilation is therefore applicative-order.  A term whose normal form depends on discarding a divergent subterm will loop.  Concretely, with \texttt{ω = S I I} and \texttt{Ω = ω ω}, normal-order \texttt{K I Ω} reduces to \lstinline[style=inlinecode]{I}, but the compiled form diverges.  For a compilation target this is usually acceptable; for a faithful lazy surface it is not, and recovering normal order requires explicit thunking, which reintroduces runtime branching and pulls in opcodes 3 and 6.
 
-\item \textbf{No readback in \{0, 1, 2\}.} Compiled \texttt{SKI} can be executed but its normal form cannot be printed without distinguishing a residual \lstinline[style=inlinecode]{S} from a \lstinline[style=inlinecode]{K} from an application at runtime. For Nock, this requires a structural test (opcode 3) and a conditional (opcode 6). The fragment is a faithful execution target, not a normalizer.
+\item \textbf{No readback in \{0, 1, 2\}.} Compiled \texttt{SKI} can be executed but its normal form cannot be printed without distinguishing a residual \lstinline[style=inlinecode]{S} from a \lstinline[style=inlinecode]{K} from an application at runtime. For Nock, this requires a structural test (opcode 3), an equality test (opcode 5), and a conditional (opcode 6). The fragment is a faithful execution target, not a normalizer.
 
 A normalizer must additionally return the normal form in an inspectable form, which means recognizing combinators at runtime, which the \{0, 1, 2\} fragment cannot do.  In other words, when an \texttt{SKI} evaluator completes, it has a normal form or a tree whose leaves are \texttt{S}, \texttt{K}, \texttt{I} and whose internal nodes are applications.  To print that normal form (to ``read it back"), one walks the tree and at each node decides if it is a leaf or an application, and if a leaf, which combinator?
 
@@ -543,7 +543,7 @@ formulas rather than compiled as combinator sub-terms.  Compile a divergent bran
 
 What the \texttt{SKI}/\{0, 1, 2\} fragment cannot do effectively is manufacture the boolean.  \lstinline[style=inlinecode]{IF} above routes on a boolean it is handed; to branch on a property of data (``is this atom zero", ``is this noun a cell"), one must first map a datum to \lstinline[style=inlinecode]{K} or \lstinline[style=inlinecode]{K I}, and that inspection reads an atom's value or tests cell-ness.  Neither is expressible in pure \{0, 1, 2\}.  Selecting on a given boolean is free; deciding what the boolean should be requires the cell test (opcode 3), increment, equality (opcode 5), or negation (built with opcode 6 on opcode 5).
 
-This is precisely the shape of Nock's own conditional.  Opcode 6 is trivially derivable from opcodes 0–5, and what it adds over the selector above is the data-derived predicate:  run a formula \texttt{b} to compute a loobean on the subject, map that loobean to an address with (opcode 4) to pick one of two formulas, and run only the chosen one.  The combinatory core we have built here is the selection half; the predicate half is a partial motivation for opcodes 3, 4, and 5 as minimal additions to the \texttt{SKI} basis rather than merely conveniences.
+This is precisely the shape of Nock's own conditional.  Opcode 6 is trivially derivable from opcodes 0–5, and what it adds over the selector above is the data-derived predicate:  run a formula \texttt{b} to compute a loobean on the subject, map that loobean to an address (using opcode 4) to pick one of two formulas, and run only the chosen one.  The combinatory core we have built here is the selection half; the predicate half is a partial motivation for opcodes 3, 4, and 5 as minimal additions to the \texttt{SKI} basis rather than merely conveniences.
 
 \section{Conclusion}
 

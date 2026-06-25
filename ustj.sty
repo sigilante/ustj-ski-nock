@@ -15,6 +15,10 @@
   Scale=MatchLowercase,
   % BoldFont=Urbit Sans Mono TT Light,
   ]
+\newcommand{\nocklfloor}{{\monofont\symbol{"230A}}}
+\newcommand{\nockrfloor}{{\monofont\symbol{"230B}}}
+\newcommand{\nockomega}{{\monofont\symbol{"03C9}}}
+\newcommand{\nockOmega}{{\monofont\symbol{"03A9}}}
 \renewcommand{\setmonofont}{\monofont}
 \renewcommand{\texttt}[1]{{\monofont #1}}
 % Define a new font family for small caps with FakeSlant
@@ -27,6 +31,10 @@
 \newcommand{\ssc}[1]{{\slantedsmallcapsfont\textsc{#1}}}
 
 \usepackage{listings}
+% \renewcommand{\setmathfont}{\monofont}
+% \lstset{
+%   mathescape=true,
+% }
 \usepackage[dvipsnames]{xcolor}
 \definecolor{darkgray}{rgb}{0.25, 0.25, 0.25}
 \lstdefinelanguage{Hoon}
@@ -71,9 +79,11 @@
     upquote=true,
     breaklines=true,
     breakatwhitespace=true,
+    literate={⌊}{{\nocklfloor}}1 {⌋}{{\nockrfloor}}1 {ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
     commentstyle=\color{darkgray}\emph,
     keywordstyle=\bfseries,
-    moredelim=[is][\underline]{@}{@}
+    moredelim=[is][\underline]{@}{@},
+    escapechar=\textbackslash,
 }
 \lstdefinestyle{listingcode}{
     language=Hoon,
@@ -89,6 +99,7 @@
     upquote=true,
     breaklines=true,
     breakatwhitespace=true,
+    literate={⌊}{{\nocklfloor}}1 {⌋}{{\nockrfloor}}1 {ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
     commentstyle=\color{darkgray}\emph,
     keywordstyle=\bfseries,
     moredelim=[is][\underline]{@}{@}
@@ -106,6 +117,7 @@
     upquote=true,
     breaklines=true,
     breakatwhitespace=true,
+    literate={⌊}{{\nocklfloor}}1 {⌋}{{\nockrfloor}}1 {ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
     commentstyle=\color{darkgray}\emph,
     keywordstyle=\bfseries,
     moredelim=[is][\underline]{@}{@}

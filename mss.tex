@@ -40,7 +40,7 @@
 \thispagestyle{firststyle}
 
 \begin{abstract}
-It has been claimed that the Nock \textsc{isa} closely corresponds to the \texttt{ski} combinator calculus dressed up for nouns.  In particular, opcodes 2, 1, and 0 have been said to correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I}.  This claim is usually stated as an analogy, and the details are elided.  We here make it into an algorithm.  We give a four-rule compiler from arbitrary \texttt{ski} terms to Nock formulas using only opcodes 0, 1, and 2, prove it correct under a fixed application convention, and exercise it on the usual worked examples: the identity laws, Church booleans, the \texttt{B}, \texttt{C}, and \texttt{W} combinators, and Church numerals performing real arithmetic.  The compiled output is verified against an independent Nock 4K interpreter.  The construction is a constructive proof that the Nock fragment of \texttt{0}, \texttt{1}, \texttt{2} opcodes is Turing-complete.  We are explicit about the three properties it does \emph{not} have---laziness, normal-form readback, and sharing---each marking a boundary where the fragment is genuinely insufficient and additional tools are required.
+The Nock \textsc{isa} opcodes 2, 1, and 0 have been said to correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I} in the \texttt{ski} combinator calculus.  We give a four-rule compiler from arbitrary \texttt{ski} terms to Nock formulas using only opcodes 0, 1, and 2, prove it correct under a fixed application convention, and exercise it on the usual worked examples: the identity laws, Church booleans, the \texttt{B}, \texttt{C}, and \texttt{W} combinators, and Church numerals performing real arithmetic.  The compiled output is verified against an independent Nock 4K interpreter.  The construction is a constructive proof that the Nock fragment of \texttt{0}, \texttt{1}, \texttt{2} opcodes is Turing-complete.  This fragment lacks certain properties, marking a boundary beyond which the fragment is genuinely insufficient and additional tools are required.
 \end{abstract}
 
 % We will adjust page numbering in final editing.
@@ -163,7 +163,7 @@ We check the evaluation:  \lstinline[style=inlinecode]{*[x S] = [[1 2] [0 1] [1 
 
 \subsection{\texttt{B} composition}
 
-Any other combinator can be reached by elaborating its lambda definition to \texttt{SKI} and compiling, but the result is large.  A named combinator is better derived directly, by the same method as the previous subsection:  it becomes one builder layer per argument.  The innermost layer is the opcode 2 application skeleton that fires on the final argument; each enclosing layer is an autocons that captures one argument and embeds it.  We here derive \texttt{B}, \texttt{C}, and \texttt{W}; a similar methodology could be used for much of Smullyan's aviary \citep{Smullyan1994}.
+Any other combinator can be reached by elaborating its lambda definition to \texttt{SKI} and compiling, but the result is large.  A named combinator is better derived directly, by the same method as the previous subsection:  it becomes one builder layer per argument.  The innermost layer is the opcode 2 application skeleton that fires on the final argument; each enclosing layer is an autocons that captures one argument and embeds it.  We here derive \texttt{B}, \texttt{C}, and \texttt{W}; a similar methodology could be used for much of Smullyan's aviary \citep{Smullyan1985}.
 
 For \lstinline[style=inlinecode]{B f g x = f (g x)}, the firing step computes \lstinline[style=inlinecode]{f} applied to \lstinline[style=inlinecode]{g x}, i.e. \lstinline[style=inlinecode]{*[*[x g] f]}, which is opcode 2 with \lstinline[style=inlinecode]{g} in the formula-\lstinline[style=inlinecode]{b} slot and \lstinline[style=inlinecode]{f} quoted in the formula-\lstinline[style=inlinecode]{c} slot; capturing \lstinline[style=inlinecode]{g} then \lstinline[style=inlinecode]{f} gives:
 
@@ -239,6 +239,7 @@ Why quote, and why this order?  Evaluating \lstinline[style=inlinecode]{[[A B]] 
 \lstinline[style=inlinecode]{val(A)}. The result is \lstinline[style=inlinecode]{*[val(B) val(A)]}---apply value \lstinline[style=inlinecode]{val(A)} to argument
 \lstinline[style=inlinecode]{val(B)}, i.e. \lstinline[style=inlinecode]{A} applied to \lstinline[style=inlinecode]{B}. The operands are reduced to values \emph{before} application, which is what makes nested applications compose correctly; quoting a sub-application rather than evaluating it produces an ``off-by-one error'' (a residual \lstinline[style=inlinecode]{K} where the value was expected).
 
+\sloppy
 Correctness is demonstrated practically by induction on term structure.  For application, the rule computes \lstinline[style=inlinecode]{apply(val(A), val(B))}, and by the induction hypothesis \lstinline[style=inlinecode]{val(A)}, \lstinline[style=inlinecode]{val(B)} are the values of \lstinline[style=inlinecode]{A}, \lstinline[style=inlinecode]{B}; by §2 this is the value of \lstinline[style=inlinecode]{A B}. The translation is therefore a homomorphism from \texttt{SKI} application to Nock evaluation, under the call-by-value strategy forced by opcode 2's eager semantics (see Section~\ref{sxn:limitations}).
 
 \section{Worked Examples}
@@ -394,8 +395,8 @@ These exercise three-variable abstraction and argument duplication. Note that th
 
 \subsection{Church numerals and arithmetic}
 
-A Church numeral \lstinline[style=inlinecode]{church n} applies its first argument \lstinline[style=inlinecode]{n} times to its second.  Numerals are built and incremented entirely within the fragment.\footnote{A Church numeral is a value (formula), not an atom.  To read it out as a Nock atom we decode it:  apply it to the atom successor \lstinline[style=inlinecode]{inc = [4 0 1]} and the atom \lstinline[style=inlinecode]{0}, writing \lstinline[style=inlinecode]{⌊n⌋ = n inc 0}:
-\lstinline[style=inlinecode]{⌊church 0⌋ = 0 ; ⌊SUCC^5 (church 0)⌋ = 5 ; ⌊SUCC (church 2)⌋ = 3}.  Decoding is the only step that uses opcode 4, and it is read-out, not arithmetic.} %TODO font floor
+A Church numeral \lstinline[style=inlinecode]{church n} applies its first argument \lstinline[style=inlinecode]{n} times to its second.  Numerals are built and incremented entirely within the fragment.\footnote{A Church numeral is a value (formula), not an atom.  To read it out as a Nock atom we decode it:  apply it to the atom successor \lstinline[style=inlinecode]{inc = [4 0 1]} and the atom \lstinline[style=inlinecode]{0}, writing \texttt{\nocklfloor n\nockrfloor = n inc 0}:
+\texttt{\nocklfloor church 0\nockrfloor = 0 ; \nocklfloor SUCC\^{}5 (church 0)\nockrfloor = 5 ; \nocklfloor SUCC (church 2)\nockrfloor = 3}.  Decoding is the only step that uses opcode 4, and it is readout, not arithmetic.}
 Examples of Church numerals and their Nock \texttt{SKI} representations are given in Table~\ref{tbl:church-numerals}.  At this point, we will revert in part to the lambda calculus notation for clarity, but the underlying Nock \texttt{SKI} formulas are always available and are used in the actual evaluation.  The successor function is defined by the usual combinator formula:
 
 \begin{lstlisting}[style=listingblock]
@@ -415,6 +416,7 @@ succ = [[1 1 2] [0 1] 1 [1 1] 0 1]
 church 2 = [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1]
 ⌊church 2⌋ = 2
 succ (church 2) = [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]
+
 ⌊succ (church 2)⌋ = 3
 \end{lstlisting}
 
@@ -452,7 +454,7 @@ church 5 succ 0   = 5
 
 \begin{landscape}
 \begin{table}
-\caption{Church numerals and their Nock \texttt{SKI} representations.  The numeral \lstinline[style=inlinecode]{church n} is a value (formula) that applies its first argument \lstinline[style=inlinecode]{n} times to its second.  The decoding \lstinline[style=inlinecode]{⌊n⌋ = n inc 0} produces the Nock atom corresponding to the numeral.}
+\caption{Church numerals and their Nock \texttt{SKI} representations.  The numeral \texttt{church n} is a value (formula) that applies its first argument \texttt{n} times to its second.  The decoding \texttt{\nocklfloor n\nockrfloor = n inc 0} produces the Nock atom corresponding to the numeral.}
 \label{tbl:church-numerals}
 \begin{tabular}{ccr}
 \hline \hline
@@ -469,11 +471,82 @@ church 5 succ 0   = 5
 \end{table}
 \end{landscape}
 
+\section{Validation}
 
+Any valid Nock \textsc{isa} interpreter should correctly evaluate the examples above after the \texttt{SKI} compiler stage has been applied.  We utilized both a simple interpreter with only opcodes 0, 1, and 2,\footnote{\href{https://github.com/sigilante/skitrace}{\texttt{sigilante/skitrace}}} and the \texttt{pinochle} interpreter with the full Nock \textsc{isa}.\footnote{\href{https://github.com/sigilante/pinochle}{\texttt{sigilante/pinochle}}.}  Results were identical (and correct) in both cases.  The examples are not exhaustive, but they exercise the combinators and the compiler in a variety of ways, including nested applications, argument duplication, and Church-style numerals and booleans.
 
-The construction is Turing-complete, but it does not have laziness, normal-form readback, or sharing.  Each of these properties marks a boundary where the fragment is genuinely insufficient and additional tooling is required.
+\section{Cost}
+\label{sxn:cost}
+
+The transformation is faithful but not frugal. Measuring \texttt{SKI} leaf count against compiled Nock cell count shows the extreme verbosity of the latter.  Table~\ref{tbl:cost} shows the compiled size of several terms, including the Church numerals and the named combinators.
+
+\begin{table}
+\caption{Compiled Nock cell counts for various \texttt{SKI} terms.}
+\label{tbl:cost}
+\begin{tabular}{lcc}
+\hline \hline
+Term & \texttt{SKI} leaves & Nock cells \\
+\hline
+\texttt{I} & 1 & 2 \\
+\texttt{S K K} & 3 & 22 \\
+\texttt{W} & 16 & 130 \\
+\texttt{B} & 25 & 208 \\
+\texttt{C} & 25 & 208 \\
+\texttt{church 2} & 76 & 640 \\
+\texttt{church 5} & 187 & 1588 \\
+\texttt{church 10} & 372 & 3168 \\
+\hline
+\end{tabular}
+\end{table}
+
+Compiled Nock runs roughly $8.5\times$ the \texttt{SKI} leaf count (a constant per combinator plus the opcode 2 application wrapper) and the \texttt{SKI} itself is already exponential in the worst case under naive bracket abstraction.  The natural number ten compiles to a 3168-cell formula as a Church numeral.  These figures are static, before reduction; at runtime `S` duplicates its argument into both branches with no sharing, so evaluation cost compounds on representation cost.
+
+Named combinators escape this blow-up before the compiler stage:  derived directly rather than routed through bracket abstraction, \texttt{B}, \texttt{C}, and \texttt{W} are roughly twenty times smaller. The cost above is the price of the \emph{general} compiler on
+arbitrary terms, not a property of the targets themselves.
+
+\section{Limitations}
+\label{sxn:limitations}
+
+Three properties bound the construction. Each is a real boundary, not a deficiency to be patched away within the fragment.
+
+\begin{enumerate}
+\item \textbf{Call-by-value.} Opcode 2 is eager: \lstinline[style=inlinecode]{*[a 2 b c]} fully reduces \lstinline[style=inlinecode]{*[a b]} and \lstinline[style=inlinecode]{*[a c]} before applying.  The compilation is therefore applicative-order.  A term whose normal form depends on discarding a divergent subterm will loop.  Concretely, with \texttt{ω = S I I} and \texttt{Ω = ω ω}, normal-order \texttt{K I Ω} reduces to \lstinline[style=inlinecode]{I}, but the compiled form diverges.  For a compilation target this is usually acceptable; for a faithful lazy surface it is not, and recovering normal order requires explicit thunking, which reintroduces runtime branching and pulls in opcodes 3 and 6.
+
+\item \textbf{No readback in \{0, 1, 2\}.} Compiled \texttt{SKI} can be executed but its normal form cannot be printed without distinguishing a residual \lstinline[style=inlinecode]{S} from a \lstinline[style=inlinecode]{K} from an application at runtime. For Nock, this requires a structural test (opcode 3) and a conditional (opcode 6). The fragment is a faithful execution target, not a normalizer.
+
+A normalizer must additionally return the normal form in an inspectable form, which means recognizing combinators at runtime, which the \{0, 1, 2\} fragment cannot do.  In other words, when an \texttt{SKI} evaluator completes, it has a normal form or a tree whose leaves are \texttt{S}, \texttt{K}, \texttt{I} and whose internal nodes are applications.  To print that normal form (to ``read it back"), one walks the tree and at each node decides if it is a leaf or an application, and if a leaf, which combinator?
+
+\item \textbf{No sharing.}  This is tree reduction. \lstinline[style=inlinecode]{S} copies its argument with no sharing, so terms with shared redexes blow up exponentially.  This is moderately acceptable as an intermediate representation to compile through, but impractical as a runtime for large terms, which want graph reduction.
+\end{enumerate}
+
+\noindent
+These can be read as an alternate set of motivations for opcodes beyond 2; as may be surmised, the \{0, 1, 2\} fragment is Turing-complete but lacks certain practical features.
+
+\section{Conditionals}
+
+A conditional is an obvious stress test for such a small fragment because in a strict evaluator a conditional that evaluates both branches is useless for its principal job of guarding recursion.  In practice, the conditional must be split into two parts.
+
+The Church booleans are already a form of conditional; with \lstinline[style=inlinecode]{TRUE = K} and \lstinline[style=inlinecode]{FALSE = K I}, the term \lstinline[style=inlinecode]{b t e} routes to the chosen branch.  The routing itself executes neither branch:  \lstinline[style=inlinecode]{K} reads its two arguments by slot and discards one, never applying them as formulas.  If the branches are held as quoted formulas (thunks) and only the survivor is run, the unchosen branch is never evaluated.  The whole conditional is one closed formula in the fragment:
+
+\begin{lstlisting}[style=listingblock]
+IF cond tf ef s
+            = [2 [1 s] [2 [1 ef] [2 [1 tf] [1 cond]]]]
+\end{lstlisting}
+
+\noindent
+Reading inner to outer:  apply \lstinline[style=inlinecode]{cond} to \lstinline[style=inlinecode]{tf}, then to \lstinline[style=inlinecode]{ef} (selection), then run the survivor on subject \lstinline[style=inlinecode]{s}. It is fifteen cells, pure \{0, 1, 2\}.
+
+This conditional is genuinely lazy.\footnote{Setting the unchosen branch to a crashing formula confirms it never runs: \texttt{IF TRUE 111 ⊥} returns \texttt{111} without crashing, \texttt{IF FALSE ⊥ 222} returns \texttt{222}, and the control case \texttt{IF TRUE ⊥ 222} does crash.  The chosen branch really executes, so the laziness is not an artifact of dead
+code.}  The discipline this requires is exact:  branches must be kept as quoted
+formulas rather than compiled as combinator sub-terms.  Compile a divergent branch and the eager opcode 2 forces it before selection ever happens (the \texttt{K I Ω} divergence).  Thunking the branch keeps it inert until forced; this is similar to stored procedures in conventional Nock using cores with opcode 9.
+
+What the \texttt{SKI}/\{0, 1, 2\} fragment cannot do effectively is manufacture the boolean.  \lstinline[style=inlinecode]{IF} above routes on a boolean it is handed; to branch on a property of data (``is this atom zero", ``is this noun a cell"), one must first map a datum to \lstinline[style=inlinecode]{K} or \lstinline[style=inlinecode]{K I}, and that inspection reads an atom's value or tests cell-ness.  Neither is expressible in pure \{0, 1, 2\}.  Selecting on a given boolean is free; deciding what the boolean should be requires the cell test (opcode 3), increment, equality (opcode 5), or negation (built with opcode 6 on opcode 5).
+
+This is precisely the shape of Nock's own conditional.  Opcode 6 is trivially derivable from opcodes 0–5, and what it adds over the selector above is the data-derived predicate:  run a formula \texttt{b} to compute a loobean on the subject, map that loobean to an address with (opcode 4) to pick one of two formulas, and run only the chosen one.  The combinatory core we have built here is the selection half; the predicate half is a partial motivation for opcodes 3, 4, and 5 as minimal additions to the \texttt{SKI} basis rather than merely conveniences.
 
 \section{Conclusion}
+
+The \texttt{SKI} construction in Nock \textsc{isa} is Turing-complete, but it does not have laziness, normal-form readback, or sharing.  Each of these properties marks a boundary where the fragment is genuinely insufficient and additional tooling beyond \{0, 1, 2\} is required.
 
 This article makes concrete the claim that Nock opcodes 0, 1, and 2 are sufficient to represent the \texttt{SKI} combinator calculus and are thus Turing-complete (if insufficient to handle nouns natively).  The embedding is a constructive proof that the opcode {0, 1, 2} fragment is Turing-complete:  the deferred monograph the \emph{Documentary History} expected is rooted in a handful of lines of Nock.  The compiler is a homomorphism from \texttt{SKI} application to Nock evaluation, under a fixed call-by-value convention.  The combinators are pure construction; opcode 2 appears only in the formula they assemble at application time, carried as quoted data.  A second corollary locates the fragment's edge precisely: a conditional's \emph{selection} is combinatory and lives in {0, 1, 2}, but its \emph{decision}---computing a boolean from data---does not, which motivates Nock's basis as an \texttt{SKI} core plus a minimal inspection and arithmetic kernel.  The Nock \textsc{isa} has been manifestly Turing-complete since its inception, but this exposition makes a new demonstration explicit and constructive.\tombstone
 

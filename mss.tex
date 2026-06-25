@@ -2,6 +2,9 @@
 
 \usepackage{ustj}
 
+\usepackage{pdflscape}
+\renewcommand{\headrulewidth}{0pt}
+
 \addbibresource{mss.bib}
 
 \newcommand{\authorname}{N.\ E.\ Davis}
@@ -27,7 +30,7 @@
 \fancyfoot[LE,RO]{\thepage}
 
 %%MANUSCRIPT
-\title{Representing the SKI Combinator Calculus in the Nock Instruction Set Architecture}
+\title{Representing the \texttt{SKI} Combinator Calculus in the Nock Instruction Set Architecture}
 \author{\authorname~\authorpatp \\ \affiliation}
 \date{}
 
@@ -37,7 +40,7 @@
 \thispagestyle{firststyle}
 
 \begin{abstract}
-It has been claimed that the Nock \textsc{isa} closely corresponds to the \texttt{ski} combinator calculus dressed up for nouns.  In particular, opcodes 2, 1, and 0 have been said to correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I}.  This claim is usually stated as an analogy, and the details are elided.  We here make it into an algorithm.  We give a four-rule compiler from arbitrary \texttt{ski} terms to Nock formulas using only opcodes 0, 1, and 2, prove it correct under a fixed application convention, and exercise it on the usual worked examples: the identity laws, Church booleans, the \texttt{B}, \texttt{C}, and \texttt{W} combinators, and Church numerals performing real arithmetic.  The compiled output is verified against an independent Nock 4K interpreter.  The construction is a constructive proof that the Nock fragment of \texttt{0}, \texttt{1}, \texttt{2} opcodes is Turing-complete.  We are explicit about the three properties it does \emph{not} have---laziness, normal-form readback, and sharing---because each marks a boundary where the fragment is genuinely insufficient and additional opcodes are required.
+It has been claimed that the Nock \textsc{isa} closely corresponds to the \texttt{ski} combinator calculus dressed up for nouns.  In particular, opcodes 2, 1, and 0 have been said to correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I}.  This claim is usually stated as an analogy, and the details are elided.  We here make it into an algorithm.  We give a four-rule compiler from arbitrary \texttt{ski} terms to Nock formulas using only opcodes 0, 1, and 2, prove it correct under a fixed application convention, and exercise it on the usual worked examples: the identity laws, Church booleans, the \texttt{B}, \texttt{C}, and \texttt{W} combinators, and Church numerals performing real arithmetic.  The compiled output is verified against an independent Nock 4K interpreter.  The construction is a constructive proof that the Nock fragment of \texttt{0}, \texttt{1}, \texttt{2} opcodes is Turing-complete.  We are explicit about the three properties it does \emph{not} have---laziness, normal-form readback, and sharing---each marking a boundary where the fragment is genuinely insufficient and additional tools are required.
 \end{abstract}
 
 % We will adjust page numbering in final editing.
@@ -48,48 +51,52 @@ It has been claimed that the Nock \textsc{isa} closely corresponds to the \textt
 
 \section{Introduction}
 
-The Nock instruction set architecture is a combinator calculus sufficient to represent all computable functions.  It has been a longstanding temptation to draw a direct analogy from the Nock \textsc{isa} to the \texttt{ski} combinator calculus.  This analogy claims that the Nock opcodes 2, 1, and 0 correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I} respectively.  The analogy is usually stated informally, e.g. ``[there are] some subtle differences to Nock's expression of S as opcode 2 that we will elide as being fundamentally similar, but perhaps worthy of its own monograph'' \citep{lagrev2025}.  We here deliver upon that promise and convert an Urbit legend into a concrete demonstration.
+The Nock instruction set architecture is a combinator calculus sufficient to represent all computable functions.  It has been a longstanding temptation to draw a direct analogy from the Nock \textsc{isa} to the \texttt{SKI} combinator calculus.  This analogy claims that the Nock opcodes 2, 1, and 0 correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I} respectively.  The analogy is usually stated informally, e.g. ``[there are] some subtle differences to Nock's expression of \texttt{S} as opcode 2 that we will elide as being fundamentally similar, but perhaps worthy of its own monograph'' \citep{lagrev2025}.  We here deliver upon that promise and convert an Urbit legend into a concrete demonstration.
 
-The combinatory reading of Nock is well established. Smullyan-style combinator calculi build all computation from a handful of variable-free operators; the \texttt{SKI} system does it with three \citep{Curry1958}, which is neither unique nor minimal but balances convenience with economy.
+Combinator calculi build all computation from a handful of variable-free operators; the \texttt{SKI} system does it with three \citep{Curry1958}, which is neither unique nor minimal but balances convenience with economy.\footnote{See particularly \citet{Smullyan1985} for more on combinatory logic.}  Put briefly, the \texttt{S} combinator (``substitute'') takes three arguments and applies the first to the third, then applies the second to the third, and finally applies the result of the first application to the result of the second.  The \texttt{K} combinator (```k'onstant'') takes two arguments and returns the first, discarding the second.  The \texttt{I} combinator (``identity'') takes one argument and returns it unchanged.  The \texttt{SKI} system is Turing-complete, meaning that any computable function can be expressed as a combination of these three operators.
 
-Put briefly, the \texttt{S} combinator (``substitute'') takes three arguments and applies the first to the third, then applies the second to the third, and finally applies the result of the first application to the result of the second.  The \texttt{K} combinator (```k'onstant'') takes two arguments and returns the first, discarding the second.  The \texttt{I} combinator (``identity'') takes one argument and returns it unchanged.  The \texttt{SKI} system is Turing-complete, meaning that any computable function can be expressed as a combination of these three operators.
-
-\begin{lstlisting}
+\begin{lstlisting}[style=listingblock]
 S x y z = x z (y z)
-K x y = x
-I x = x
+K x y   = x
+I x     = x
 \end{lstlisting}
 
-The Nock \textsc{isa} is also Turing-complete, and it is natural to ask whether the \texttt{SKI} combinators can be represented in Nock.  The answer is yes, but the details are subtle.  The analogy between Nock opcodes and \texttt{SKI} combinators is not a simple compilation procedure, but a homomorphism that preserves the structure of the computation.
+The Nock \textsc{isa} is also Turing-complete, and it is natural to ask whether the \texttt{SKI} combinators can be represented in Nock.  The answer is yes, but some details are subtle.  The analogy between Nock opcodes and \texttt{SKI} combinators is not a simple one-to-one compilation procedure, but a homomorphism that preserves the structure of the computation.
 
-A straightforward reading of Nock opcode \texttt{0} yielding \texttt{I} is uncontroversial, as \lstinline{[0 1]} trivially returns identity.  The reading of opcode \texttt{1} yielding \texttt{K} is also straightforward, as \lstinline{[1 x]} returns a constant function that discards its argument (subject).  The reading of opcode \texttt{2} yielding \texttt{S} is more subtle, as it requires a fixed convention for how the compiled combinator receives its arguments.  The ``subtle differences'' of \citeauthor{lagrev2025} elision matter more than they appear.  The opcode-to-combinator analogy is not a compilation procedure. SKI terms are curried and higher-order:  combinators are routinely partially applied, and a combinator may be passed as an argument to another combinator. A symbol-for-symbol substitution---writing \texttt{2} for \texttt{S}, \texttt{1} for \texttt{K}, and \texttt{0} for \texttt{I}, with appropriate transposition of arguments into subject and formula---produces nothing runnable the moment \texttt{S} has fewer than three arguments, which is almost always.  What is needed is a \emph{homomorphism}: a translation under which Nock application of compiled terms mirrors SKI reduction, with a fixed convention for how a compiled combinator receives its arguments.
+A straightforward reading of Nock opcode \texttt{0} yielding \texttt{I} is uncontroversial, as \lstinline[style=inlinecode]{[0 1]} trivially returns identity.  The reading of opcode \texttt{1} yielding \texttt{K} is also straightforward, as \lstinline[style=inlinecode]{[1 x]} returns a constant function that discards its argument (subject).  The reading of opcode \texttt{2} yielding \texttt{S} is more subtle, as it requires a fixed convention for how the compiled combinator receives its arguments.  The ``subtle differences'' of \citeauthor{lagrev2025}'s elision matter more than they appear.  The opcode-to-combinator analogy is not a compilation procedure. SKI terms are curried and higher-order:  combinators are routinely partially applied, and a combinator may be passed as an argument to another combinator. A symbol-for-symbol substitution---writing \texttt{2} for \texttt{S}, \texttt{1} for \texttt{K}, and \texttt{0} for \texttt{I}, with appropriate transposition of arguments into subject and formula---produces nothing runnable the moment \texttt{S} has fewer than three arguments, which is almost always.  What is needed is a \emph{homomorphism}: a translation under which Nock application of compiled terms mirrors SKI reduction, with a fixed convention for how a compiled combinator receives its arguments.
 
 We supply such a homomorphism as four rules with three small Nock formulas yielding the \texttt{SKI} combinators.  The remainder of this article consists of worked examples, mechanical validation, a cost analysis, and an accounting of the limitations.
 
 \section{Preliminaries}
 \label{sxn:preliminaries}
 
-We assume Nock 4K. Evaluation is the function \lstinline{*[subject formula]}.  We require only three opcodes from the Nock \textsc{isa}:
+We assume Nock 4K. Evaluation is the function \lstinline[style=inlinecode]{*[subject formula]}.  We require only three opcodes from the Nock \textsc{isa}:
 
-\begin{lstlisting}[style=nock]
-*[a 0 b]    ->  /[b a]          :: slot: fetch the noun at tree address b
-*[a 1 b]    ->  b               :: quote: return b unchanged
-*[a 2 b c]  ->  *[*[a b] *[a c]] :: eval: compute a subject and a formula, then run
+\begin{lstlisting}[style=listingblock]
+:: slot: fetch the noun at tree address b
+*[a 0 b]    ->  /[b a]
+
+:: quote: return b unchanged
+*[a 1 b]    ->  b
+
+:: eval: compute a subject and a formula, then run
+*[a 2 b c]  ->  *[*[a b] *[a c]]
 \end{lstlisting}
 
 \noindent
 plus the structural distribution (autocons) rule, which fires whenever a formula's head is itself a cell:
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 *[a [b c] d]  ->  [*[a b c] *[a d]]
 \end{lstlisting}
 
-Slot address 1 denotes the whole subject, so \lstinline{*[a 0 1] = a}.
+\noindent
+Slot address 1 denotes the whole subject, so \lstinline[style=inlinecode]{*[a 0 1] = a}.
 
 A \emph{value} is a Nock formula that consumes its
-argument as the \emph{subject}. To apply a value \lstinline{v} to an argument \lstinline{x}, we evaluate
+argument as the \emph{subject}. To apply a value \lstinline[style=inlinecode]{v} to an argument \lstinline[style=inlinecode]{x}, we evaluate
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 apply(v, x)  ==  *[x v]
 \end{lstlisting}
 
@@ -97,103 +104,106 @@ apply(v, x)  ==  *[x v]
 This operative convention inverts the lambda-calculus argument order, because in Nock the function is the formula and the argument is the subject.
 
 \section{Combinator Formulas}
+\label{sxn:combinators}
 
 Under the convention of Section~\ref{sxn:preliminaries}, each \texttt{SKI} combinator is a closed Nock formula.  We give each, then verify its defining law by reduction.
 
 \subsection{\texttt{I} identity}
 
-\lstinline{I x = x} requires \lstinline{*[x I] = x}, which is slot 1:
+\lstinline[style=inlinecode]{I x = x} requires \lstinline[style=inlinecode]{*[x I] = x}, which is slot 1:
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 I = [0 1]
 \end{lstlisting}
 
 \subsection{\texttt{K} constant}
 
-Applying `K` to `x` must yield a value that ignores its next argument and returns its value.  Thus \lstinline{K x y = x} requires \lstinline{*[x K] = [1 x]}, which is built from subject \lstinline{x} by autocons:
+Applying \lstinline[style=inlinecode]{K} to \lstinline[style=inlinecode]{x} must yield a value that ignores its next argument and returns its value.  Thus \lstinline[style=inlinecode]{K x y = x} requires \lstinline[style=inlinecode]{*[x K] = [1 x]}, which is built from subject \lstinline[style=inlinecode]{x} by autocons:
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 K = [[1 1] [0 1]]
 \end{lstlisting}
 
 For example,
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 *[x K] = [*[x [1 1]] *[x [0 1]]] = [1 x]
 \end{lstlisting}
 
 \noindent
-Then for any \lstinline{y}, \lstinline{*[y [1 x]] = x}, so \lstinline{K x y = x} holds.
+Then for any \lstinline[style=inlinecode]{y}, \lstinline[style=inlinecode]{*[y [1 x]] = x}, so \lstinline[style=inlinecode]{K x y = x} holds.
 
 \subsection{\texttt{S} substitution}
 
-\lstinline{S x y z = (x z)(y z)}. The combinator accumulates \lstinline{x}, then \lstinline{y}, then fires on \lstinline{z}. We construct it bottom-up.
+Substitution states \lstinline[style=inlinecode]{S x y z = (x z)(y z)}. The combinator accumulates \lstinline[style=inlinecode]{x}, then \lstinline[style=inlinecode]{y}, then fires on \lstinline[style=inlinecode]{z}. We construct it bottom-up.
 
-When the fully-applied \lstinline{S x y} finally receives \lstinline{z} as subject, it must produce \lstinline{(x z)(y z)}.  Under the convention, \lstinline{x z = *[z x]} and \lstinline{y z = *[z y]}, and the outer application is \lstinline{*[ *[z y]  *[z x] ]}.  That is precisely opcode 2 with subject \lstinline{z}, formula-\lstinline{b} equal to \lstinline{y}, formula-\lstinline{c} equal to \lstinline{x}:
+When the fully-applied \lstinline[style=inlinecode]{S x y} finally receives \lstinline[style=inlinecode]{z} as subject, it must produce \lstinline[style=inlinecode]{(x z)(y z)}.  Under the convention, \lstinline[style=inlinecode]{x z = *[z x]} and \lstinline[style=inlinecode]{y z = *[z y]}, and the outer application is \lstinline[style=inlinecode]{*[ *[z y]  *[z x] ]}.  That is precisely opcode 2 with subject \lstinline[style=inlinecode]{z}, formula-\lstinline[style=inlinecode]{b} equal to \lstinline[style=inlinecode]{y}, formula-\lstinline[style=inlinecode]{c} equal to \lstinline[style=inlinecode]{x}:
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 S x y = [2 y x]
-      ::  *[z [2 y x]] = *[*[z y] *[z x]] = (x z)(y z)
+::  *[z [2 y x]] = *[*[z y] *[z x]] = (x z)(y z)
 \end{lstlisting}
 
-Working back one step, applying \lstinline{S x} to \lstinline{y} (subject \lstinline{y}, constant \lstinline{x}) must build the noun \lstinline{[2 y x]}:
+\noindent
+Working back one step, applying \lstinline[style=inlinecode]{S x} to \lstinline[style=inlinecode]{y} (subject \lstinline[style=inlinecode]{y}, constant \lstinline[style=inlinecode]{x}) must build the noun \lstinline[style=inlinecode]{[2 y x]}:
 
-\begin{lstlisting}[style=nock]
+\begin{lstlisting}[style=listingblock]
 S x = [[1 2] [0 1] [1 x]]
 \end{lstlisting}
 
 \noindent
-We check that \lstinline{*[y S x] = [2 y x]}, since \lstinline{*[y [1 2]] = 2}, \lstinline{*[y [0 1]] = y}, and \lstinline{*[y [1 x]] = x}.  Working back the final step, applying \lstinline{S} to \lstinline{x} (subject \lstinline{x}) must build \lstinline{S x}; the first two parts are constants and the third, \lstinline{[1 x]}, is built from \lstinline{x} by the same autocons trick used for \lstinline{K}:
+We check that \lstinline[style=inlinecode]{*[y S x] = [2 y x]}, since \lstinline[style=inlinecode]{*[y [1 2]] = 2}, \lstinline[style=inlinecode]{*[y [0 1]] = y}, and \lstinline[style=inlinecode]{*[y [1 x]] = x}.  Working back the final step, applying \lstinline[style=inlinecode]{S} to \lstinline[style=inlinecode]{x} (subject \lstinline[style=inlinecode]{x}) must build \lstinline[style=inlinecode]{S x}; the first two parts are constants and the third, \lstinline[style=inlinecode]{[1 x]}, is built from \lstinline[style=inlinecode]{x} by the same autocons trick used for \lstinline[style=inlinecode]{K}:
 
-\begin{lstlisting}[style=nock]
-S  =  [[1 [1 2]] [1 [0 1]] [[1 1] [0 1]]]
+\begin{lstlisting}[style=listingblock]
+S = [[1 [1 2]] [1 [0 1]] [[1 1] [0 1]]]
 \end{lstlisting}
 
 \noindent
-We check:  \lstinline{*[x S] = [[1 2] [0 1] [1 x]] = Sx}.
+We check the evaluation:  \lstinline[style=inlinecode]{*[x S] = [[1 2] [0 1] [1 x]] = S x}.
 
 \subsection{\texttt{B} composition}
 
-Any other combinator can be reached by elaborating its lambda definition to \texttt{SKI} and compiling, but the result is large.  A named combinator is better derived directly, by the same method as the previous subsection:  it becomes one builder layer per argument.  The innermost layer is the opcode-2 application skeleton that fires on the final argument; each enclosing layer is an autocons that captures one argument and embeds it.  We give \texttt{B}, \texttt{C}, and \texttt{W}.
+Any other combinator can be reached by elaborating its lambda definition to \texttt{SKI} and compiling, but the result is large.  A named combinator is better derived directly, by the same method as the previous subsection:  it becomes one builder layer per argument.  The innermost layer is the opcode 2 application skeleton that fires on the final argument; each enclosing layer is an autocons that captures one argument and embeds it.  We here derive \texttt{B}, \texttt{C}, and \texttt{W}; a similar methodology could be used for much of Smullyan's aviary \citep{Smullyan1994}.
 
-For \lstinline{B f g x = f (g x)}, the firing step computes \lstinline{f} applied to \lstinline{g x}, i.e. \lstinline{*[*[x g] f]}, which is opcode 2 with \lstinline{g} in the formula-\lstinline{b} slot and \lstinline{f} quoted in the formula-\lstinline{c} slot; capturing \lstinline{g} then \lstinline{f} gives:
+For \lstinline[style=inlinecode]{B f g x = f (g x)}, the firing step computes \lstinline[style=inlinecode]{f} applied to \lstinline[style=inlinecode]{g x}, i.e. \lstinline[style=inlinecode]{*[*[x g] f]}, which is opcode 2 with \lstinline[style=inlinecode]{g} in the formula-\lstinline[style=inlinecode]{b} slot and \lstinline[style=inlinecode]{f} quoted in the formula-\lstinline[style=inlinecode]{c} slot; capturing \lstinline[style=inlinecode]{g} then \lstinline[style=inlinecode]{f} gives:
 
-\begin{lstlisting}[style=nock]
-Bfg = [2 g [1 f]]
-              ::  *[x Bfg] = *[*[x g] f] = f (g x)
-Bf  = [[1 2] [0 1] [1 [1 f]]]
-              ::  *[g Bf]  = [2 g [1 f]]
-B   = [[1 [1 2]] [1 [0 1]] [[1 1] [[1 1] [0 1]]]]
+\begin{lstlisting}[style=listingblock]
+::  *[x B f g] = *[*[x g] f] = f (g x)
+B f g = [2 g [1 f]]
+::  *[g B f]   = [2 g [1 f]]
+B f   = [[1 2] [0 1] [1 [1 f]]]
+::
+B     = [[1 [1 2]] [1 [0 1]] [[1 1] [[1 1] [0 1]]]]
 \end{lstlisting}
 
 \subsection{\texttt{C} transposition}
 
 The same procedure yields \texttt{C} (flip):
 
-\begin{lstlisting}[style=nock]
-C  =  [[1 1 2] [1 [1 1] 0 1] [1 1] 0 1]
-              ::  f x y -> f y x
+\begin{lstlisting}[style=listingblock]
+::  f x y -> f y x
+C = [[1 1 2] [1 [1 1] 0 1] [1 1] 0 1]
 \end{lstlisting}
 
 \subsection{\texttt{W} duplicate}
 
 Likewise, \texttt{W} (duplicate):
 
-\begin{lstlisting}[style=nock]
-W  =  [[1 2] [1 0 1] 0 1]
-              ::  f x   -> f x x
+\begin{lstlisting}[style=listingblock]
+::  f x   -> f x x
+W = [[1 2] [1 0 1] 0 1]
 \end{lstlisting}
 
 \subsection{Commentary}
 
-The one subtlety is how a captured argument is embedded, which is dictated by how the combinator uses that argument. If the argument is applied to a computed value (as \texttt{B}'s \lstinline{f} is applied to \lstinline{g x}), it occupies a formula slot and is embedded quoted, \lstinline{[1 f]}.  If it is applied to the current subject (as \texttt{W}'s \lstinline{f} is applied to \lstinline{x}) it must pass through as the live formula, embedded by slot, \lstinline{[0 1]}. Quote where the argument is data; slot where the argument is the active function.
+The one subtlety is how a captured argument is embedded, which is dictated by how the combinator uses that argument. If the argument is applied to a computed value (as \texttt{B}'s \lstinline[style=inlinecode]{f} is applied to \lstinline[style=inlinecode]{g x}), it occupies a formula slot and is embedded quoted, \lstinline[style=inlinecode]{[1 f]}.  If it is applied to the current subject (as \texttt{W}'s \lstinline[style=inlinecode]{f} is applied to \lstinline[style=inlinecode]{x}) it must pass through as the live formula, embedded by slot, \lstinline[style=inlinecode]{[0 1]}. Quote where the argument is data; slot where the argument is the active function.
 
-Notably, the value forms of \texttt{B}, \texttt{C}, and \texttt{W} use only Nock opcodes 0 and 1. The opcode 2 appears only in the formula they assemble at application time (\lstinline{[2 g [1 f]]}), carried as quoted data.  The combinators are pure construction; the application machinery is the structure they emit. Among the basis only \texttt{S} carries a 2 in its own body, because it performs two applications at once.
+Notably, the value forms of \texttt{B}, \texttt{C}, and \texttt{W} use only Nock opcodes 0 and 1. The opcode 2 appears only in the formula they assemble at application time (\lstinline[style=inlinecode]{[2 g [1 f]]}), carried as quoted data.  The combinators are pure construction; the application machinery is the structure they emit. Among the basis only \texttt{S} carries a 2 in its own body, because it performs two applications at once.
 
 The size payoff over bracket abstraction is large (cell counts; see Section~\ref{sxn:cost} for method):
 
-\begin{tabular}{|l|c|c|c|}
- & direct & via \texttt{ski} & ratio \\
+\begin{tabular}{lccc}
+ & direct & via \texttt{SKI} & ratio \\
 \texttt{B} & 11 & 208 & ~19× \\
 \texttt{C} & 11 & 208 & ~19× \\
 \texttt{W} & 6 & 130 & ~22× \\
@@ -203,47 +213,269 @@ The two forms are extensionally identical on every input tested.  For any combin
 
 \section{Compilation of the Homomorphism}
 
-Let \lstinline{[[t]]} denote a \emph{closed} Nock formula whose product is the value of the \texttt{SKI}
-term \lstinline{t}. The compiler is four rules:
+Let \lstinline[style=inlinecode]{[[t]]} denote a \emph{closed} Nock formula whose product is the value of the \texttt{SKI}
+term \lstinline[style=inlinecode]{t}. The compiler consists of four rules:
 
-\begin{lstlisting}[style=nock]
-[[S]]    =  [1 S]
-[[K]]    =  [1 K]
-[[I]]    =  [1 I]
-[[A B]]  =  [2 [[B]] [[A]]]
+\begin{lstlisting}[style=listingblock]
+[[S]]   = [1 S]
+[[K]]   = [1 K]
+[[I]]   = [1 I]
+[[A B]] = [2 [[B]] [[A]]]
 \end{lstlisting}
 
 \noindent
-with \lstinline{S}, \lstinline{K}, \lstinline{I} the formulas of §3. The combinators are \emph{quoted} so that
-\lstinline{[[·]]} always denotes a value-producing computation; application is opcode 2 applied to the two compiled operands.
+with \lstinline[style=inlinecode]{S}, \lstinline[style=inlinecode]{K}, \lstinline[style=inlinecode]{I} the formulas of Section~\ref{sxn:combinators}.  The combinators are \emph{quoted} so that
+\lstinline[style=inlinecode]{[[·]]} always denotes a value-producing computation; application is opcode 2 applied to the two compiled operands.  \lstinline[style=inlinecode]{[[t]]} produces the value of \lstinline[style=inlinecode]{t}; it is closed, so the na\"{i}ve approach of \lstinline[style=inlinecode]{*[a [[t]]]} yields \lstinline[style=inlinecode]{val(t)} for any subject \lstinline[style=inlinecode]{a} and is not yet an application.  To apply \lstinline[style=inlinecode]{t} to Nock-noun arguments \lstinline[style=inlinecode]{a[0] ... a[n]}, fold them onto the value, each quoted, by opcode 2:
 
-Why quote, and why this order?  Evaluating `[[A B]] = [2 [[B]] [[A]]]`
-against any subject `s` gives `*[ *[s [[B]]]  *[s [[A]]] ]`. Because `[[B]]` and
-`[[A]]` are closed, they ignore `s` and reduce to the values `val(B)` and
-`val(A)`. The result is `*[val(B) val(A)]` — apply value `val(A)` to argument
-`val(B)`, i.e. `A` applied to `B`. The operands are reduced to values *before*
-application, which is what makes nested applications compose correctly; quoting
-a sub-application rather than evaluating it produces an off-by-one error (a
-residual `K` where the value was expected).
+\begin{lstlisting}[style=listingblock]
+run(t; a[1] ... a[n]) = *[0 F[n]]
+\end{lstlisting}
 
-**Correctness.** By induction on term structure. The base cases are §3. For
-application, the rule computes `apply(val(A), val(B))`, and by the induction
-hypothesis `val(A)`, `val(B)` are the values of `A`, `B`; by §2 this is the
-value of `A B`. The translation is therefore a homomorphism from SKI
-application to Nock evaluation, under the call-by-value strategy forced by
-opcode 2's eager semantics (see §8).
+\noindent
+where \lstinline[style=inlinecode]{F[0] = [[t]]},  \lstinline[style=inlinecode]{F[i] = [2 [1 a[i]] F[i-1]]}.  Each layer \lstinline[style=inlinecode]{*[· [2 [1 a[i]] F]]} reduces to \lstinline[style=inlinecode]{*[a[i] val]}, the value applied to \lstinline[style=inlinecode]{a[i]} as subject.  Throughout the remainder of this paper, we will write \lstinline[style=inlinecode]{t a[1] ... a[n] = r} as shorthand for \lstinline[style=inlinecode]{run(t; a[1] ... a[n]) = r}.  The arguments are Nock nouns, not \texttt{SKI} terms:  atoms in the identity and boolean laws, real formulas such as \texttt{+}/\texttt{INC} in the arithmetic examples.  A tap must not fire until its formula is a concrete noun.
+
+Why quote, and why this order?  Evaluating \lstinline[style=inlinecode]{[[A B]] = [2 [[B]] [[A]]]} against any subject \lstinline[style=inlinecode]{s} gives \lstinline[style=inlinecode]{*[*[s [[B]]] *[s [[A]]]]}. Because \lstinline[style=inlinecode]{[[B]]} and
+\lstinline[style=inlinecode]{[[A]]} are closed, they ignore \lstinline[style=inlinecode]{s} and reduce to the values \lstinline[style=inlinecode]{val(B)} and
+\lstinline[style=inlinecode]{val(A)}. The result is \lstinline[style=inlinecode]{*[val(B) val(A)]}---apply value \lstinline[style=inlinecode]{val(A)} to argument
+\lstinline[style=inlinecode]{val(B)}, i.e. \lstinline[style=inlinecode]{A} applied to \lstinline[style=inlinecode]{B}. The operands are reduced to values \emph{before} application, which is what makes nested applications compose correctly; quoting a sub-application rather than evaluating it produces an ``off-by-one error'' (a residual \lstinline[style=inlinecode]{K} where the value was expected).
+
+Correctness is demonstrated practically by induction on term structure.  For application, the rule computes \lstinline[style=inlinecode]{apply(val(A), val(B))}, and by the induction hypothesis \lstinline[style=inlinecode]{val(A)}, \lstinline[style=inlinecode]{val(B)} are the values of \lstinline[style=inlinecode]{A}, \lstinline[style=inlinecode]{B}; by §2 this is the value of \lstinline[style=inlinecode]{A B}. The translation is therefore a homomorphism from \texttt{SKI} application to Nock evaluation, under the call-by-value strategy forced by opcode 2's eager semantics (see Section~\ref{sxn:limitations}).
+
+\section{Worked Examples}
+\label{sxn:examples}
+
+All terms below are written in lambda form for legibility, elaborated to \texttt{SKI} by standard bracket abstraction \citep{Kiselyov2018}, then compiled by the Nock \texttt{SKI} compiler and run.  The results are the products actually computed.
+
+A script which resolves the \texttt{SKI} terms to Nock formulas, runs them in a Nock 4K interpreter, and checks the results is available at \href{https://github.com/sigilante/skitrace}{\texttt{sigilante/skitrace}}.
+
+\subsection{Identity laws}
+
+From canonical \texttt{SKI}, we anticipate the following identity laws to hold true:
+
+\begin{lstlisting}[style=listingblock]
+I 42         = 42
+S K K 42     = 42          :: S K K → I
+S K S 42     = 42          :: S K * → I
+\end{lstlisting}
+
+\noindent
+The evaluation of \lstinline[style=inlinecode]{S K K 42}, worked in Nock \texttt{SKI}, is shown in Listings~\ref{lst:identity-law-1}, \ref{lst:identity-law-2}, and \ref{lst:identity-law-3}.  The process is mechanical and discursive.  The evaluation of \lstinline[style=inlinecode]{S K S 42} is similar and left as a proverbial exercise to the reader.
+
+\begin{lstlisting}[style=listingblock,label=lst:identity-law-1,caption={Compilation expansion of \texttt{S K K 42}.}]
+*[42 [[S K K]]]
+*[42 2 [[K]] [[S K]]]
+                        [[A B]] = [2 [[B]] [[A]]]
+*[42 2 [1 K] [[S K]]]
+                        [[K]] = [1 K]
+*[42 2 [1 K] 2 [[K]] [[S]]]
+                        [[A B]] = [2 [[B]] [[A]]]
+*[42 2 [1 K] 2 [1 K] [[S]]]
+                        [[K]] = [1 K]
+*[42 2 [1 K] 2 [1 K] 1 S]
+                        [[S]] = [1 S]
+*[42 2 [1 [1 1] 0 1] 2 [1 [1 1] 0 1] 1 [1 1 2] [1 0 1] [1 1] 0 1]
+                        substitute S,K,I formulas
+\end{lstlisting}
+
+\begin{lstlisting}[style=listingblock,label=lst:identity-law-2,caption={Evaluation of \texttt{S K K 42}.}]
+*[42 2 [1 [1 1] 0 1] 2 [1 [1 1] 0 1] 1 [1 1 2] [1 0 1] [1 1] 0 1]
+                Nock 2  *[a 2 b c] = *[*[a b] *[a c]]
+*[*[42 1 [1 1] 0 1] *[42 2 [1 [1 1] 0 1] 1 [1 1 2] [1 0 1] [1 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+*[[[1 1] 0 1] *[42 2 [1 [1 1] 0 1] 1 [1 1 2] [1 0 1] [1 1] 0 1]]
+                Nock 2  *[a 2 b c] = *[*[a b] *[a c]]
+*[[[1 1] 0 1] *[*[42 1 [1 1] 0 1] *[42 1 [1 1 2] [1 0 1] [1 1] 0 1]]]
+                Nock 1  *[a 1 b] = b
+*[[[1 1] 0 1] *[[[1 1] 0 1] *[42 1 [1 1 2] [1 0 1] [1 1] 0 1]]]
+                Nock 1  *[a 1 b] = b
+*[[[1 1] 0 1] *[[[1 1] 0 1] [1 1 2] [1 0 1] [1 1] 0 1]]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+*[[[1 1] 0 1] *[[[1 1] 0 1] 1 1 2] *[[[1 1] 0 1] [1 0 1] [1 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+*[[[1 1] 0 1] [1 2] *[[[1 1] 0 1] [1 0 1] [1 1] 0 1]]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+*[[[1 1] 0 1] [1 2] *[[[1 1] 0 1] 1 0 1] *[[[1 1] 0 1] [1 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+*[[[1 1] 0 1] [1 2] [0 1] *[[[1 1] 0 1] [1 1] 0 1]]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+*[[[1 1] 0 1] [1 2] [0 1] *[[[1 1] 0 1] 1 1] *[[[1 1] 0 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+*[[[1 1] 0 1] [1 2] [0 1] 1 *[[[1 1] 0 1] 0 1]]
+                Nock 0  *[a 0 b] = /[b a]
+*[[[1 1] 0 1] [1 2] [0 1] 1 /[1 [[1 1] 0 1]]]
+                /[1 a] = a
+*[[[1 1] 0 1] [1 2] [0 1] 1 [1 1] 0 1]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+[*[[[1 1] 0 1] 1 2] *[[[1 1] 0 1] [0 1] 1 [1 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+[2 *[[[1 1] 0 1] [0 1] 1 [1 1] 0 1]]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+[2 *[[[1 1] 0 1] 0 1] *[[[1 1] 0 1] 1 [1 1] 0 1]]
+                Nock 0  *[a 0 b] = /[b a]
+[2 /[1 [[1 1] 0 1]] *[[[1 1] 0 1] 1 [1 1] 0 1]]
+                /[1 a] = a
+[2 [[1 1] 0 1] *[[[1 1] 0 1] 1 [1 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+[2 [[1 1] 0 1] [1 1] 0 1]
+(= [2 K K], the identity combinator's value)
+\end{lstlisting}
+
+\begin{lstlisting}[style=listingblock,label=lst:identity-law-3,caption={Application of \texttt{S K K 42}.}]
+# applying val(S K K) to 42   ( *[42 val(S K K)] )
+val(S K K) = [2 [[1 1] 0 1] [1 1] 0 1]
+
+# evaluation of *[42 [2 [[1 1] 0 1] [1 1] 0 1]]
+*[42 2 [[1 1] 0 1] [1 1] 0 1]
+                Nock 2  *[a 2 b c] = *[*[a b] *[a c]]
+*[*[42 [1 1] 0 1] *[42 [1 1] 0 1]]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+*[[*[42 1 1] *[42 0 1]] *[42 [1 1] 0 1]]
+                Nock 1  *[a 1 b] = b
+*[[1 *[42 0 1]] *[42 [1 1] 0 1]]
+                Nock 0  *[a 0 b] = /[b a]
+*[[1 /[1 42]] *[42 [1 1] 0 1]]
+                /[1 a] = a
+*[[1 42] *[42 [1 1] 0 1]]
+                cons  *[a [b c] d] = [*[a b c] *[a d]]
+*[[1 42] *[42 1 1] *[42 0 1]]
+                Nock 1  *[a 1 b] = b
+*[[1 42] 1 *[42 0 1]]
+                Nock 0  *[a 0 b] = /[b a]
+*[[1 42] 1 /[1 42]]
+                /[1 a] = a
+*[[1 42] 1 42]
+                Nock 1  *[a 1 b] = b
+42
+\end{lstlisting}
+
+\subsection{Church booleans}
+
+Conventional Nock utilizes atoms, but \texttt{SKI} combinators are pure construction; we therefore must utilize Church-style booleans and numerals within the particular three-opcode discipline we follow here.  Thus while this section is demonstrative of \texttt{SKI} in Nock, it evades the usual Nock idioms and in particular the economy afforded by the introduction of opcodes 3, 4, and 5.
+
+A Church boolean is a two-argument function that selects one of its arguments.  Because the combinators are pure construction, the truth values are instead represented as combinator sequences.  With \lstinline[style=inlinecode]{TRUE = K} and \lstinline[style=inlinecode]{FALSE = K I}:
+
+\begin{lstlisting}[style=listingblock]
+TRUE p q
+  = K p q
+  = p
+
+FALSE p q
+  = K I p q
+  = I q
+  = q
+
+TRUE  7 8 = 7
+FALSE 7 8 = 8
+\end{lstlisting}
+
+\noindent
+These are the canonical encodings from \texttt{SKI} praxis; here we probe with atom arguments because neither combinator applies its arguments as functions.
+
+\subsection{The \texttt{B}, \texttt{C}, \texttt{W} combinators}
+
+Elaborated from their defining lambda terms:
+
+\begin{lstlisting}[style=listingblock]
+B = λ f g x. f (g x)    compose
+C = λ f x y. f y x      transpose
+W = λ f x.   f x x      duplicate
+\end{lstlisting}
+
+Driving B with a real Nock increment \lstinline[style=inlinecode]{inc = [4 0 1]} as payload, and \texttt{C}, \texttt{W} with atoms:
+
+\begin{lstlisting}[style=listingblock]
+B inc inc 7  = 9       :: inc (inc 7)
+C K 7 8      = 8       :: K 8 7 = 8
+W K 7        = 7       :: K 7 7 = 7
+\end{lstlisting}
+
+\noindent
+These exercise three-variable abstraction and argument duplication. Note that the compiled \texttt{SKI} scaffolding remains pure {0, 1, 2}; the only 4 in \texttt{B}'s run is the external increment supplied as data.\footnote{We here draw a sharp distinction between opcode 4 as \lstinline[style=inlinecode]{inc = [4 0 1]} which operates on Nock atoms, and \lstinline[style=inlinecode]{succ} which operates on Church numerals.  The two are distinct:  \lstinline[style=inlinecode]{succ} maps a numeral-value to a numeral-value in {0,1,2}, while \lstinline[style=inlinecode]{inc} maps an atom to an atom via opcode 4.}
+
+\subsection{Church numerals and arithmetic}
+
+A Church numeral \lstinline[style=inlinecode]{church n} applies its first argument \lstinline[style=inlinecode]{n} times to its second.  Numerals are built and incremented entirely within the fragment.\footnote{A Church numeral is a value (formula), not an atom.  To read it out as a Nock atom we decode it:  apply it to the atom successor \lstinline[style=inlinecode]{inc = [4 0 1]} and the atom \lstinline[style=inlinecode]{0}, writing \lstinline[style=inlinecode]{⌊n⌋ = n inc 0}:
+\lstinline[style=inlinecode]{⌊church 0⌋ = 0 ; ⌊SUCC^5 (church 0)⌋ = 5 ; ⌊SUCC (church 2)⌋ = 3}.  Decoding is the only step that uses opcode 4, and it is read-out, not arithmetic.} %TODO font floor
+Examples of Church numerals and their Nock \texttt{SKI} representations are given in Table~\ref{tbl:church-numerals}.  At this point, we will revert in part to the lambda calculus notation for clarity, but the underlying Nock \texttt{SKI} formulas are always available and are used in the actual evaluation.  The successor function is defined by the usual combinator formula:
+
+\begin{lstlisting}[style=listingblock]
+church n = λf.λx. f^n x
+succ = λn.λf.λx. f (n f x)
+
+succ (church 0) = church 1
+succ (church 1) = church 2
+\end{lstlisting}
+
+\noindent
+In explicit Nock \texttt{SKI} form, the Church numeral successor function becomes:
+
+\begin{lstlisting}[style=listingblock]
+succ = [[1 1 2] [0 1] 1 [1 1] 0 1]
+
+church 2 = [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1]
+⌊church 2⌋ = 2
+succ (church 2) = [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]
+⌊succ (church 2)⌋ = 3
+\end{lstlisting}
+
+Arithmetic over the Church numerals is defined by the usual combinator formulas:
+
+\begin{lstlisting}[style=listingblock]
+::  in Church numerals
+plus = λm.λn.λf.λx. m f (n f x)
+mult = λm.λn.λf. m (n f)
+
+::  alternatively
+plus = λm n. m succ n
+mult = λm n. m (plus n) (church 0)
+
+:: in Nock decoding:
+plus = [[1 1 1 2] [1 0 1] [1 1 1 1] [1 1] 0 1]
+mult = [[1 1 2] [1 0 1] [1 1 1] [1 1] 0 1]
+
+succ (church 2)  =  church 3
+
+::  in Church numerals:
+church 0 succ 0   = 0
+church 3 succ 0   = [[1 2] [[1 2] [[1 2] 0 [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]
+church 5 succ 0   = 5
+(plus 2 3) succ 0 = 5
+(mult 3 4) succ 0 = 12
+
+::  in Nock decoding:
+⌊church 0⌋ = 0
+⌊church 3⌋ = 3
+⌊church 5⌋ = 5
+⌊plus 2 3⌋ = 5
+⌊mult 3 4⌋ = 12
+\end{lstlisting}
+
+\begin{landscape}
+\begin{table}
+\caption{Church numerals and their Nock \texttt{SKI} representations.  The numeral \lstinline[style=inlinecode]{church n} is a value (formula) that applies its first argument \lstinline[style=inlinecode]{n} times to its second.  The decoding \lstinline[style=inlinecode]{⌊n⌋ = n inc 0} produces the Nock atom corresponding to the numeral.}
+\label{tbl:church-numerals}
+\begin{tabular}{ccr}
+\hline \hline
+\texttt{n} & \texttt{⌊n⌋} & \texttt{church n} \\
+\hline
+0 & 0 & \texttt{[1 0 1]} \\
+1 & 1 & \texttt{[[1 2] [1 0 1] [1 1] 0 1]} \\
+2 & 2 & \texttt{[[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1]} \\
+3 & 3 & \texttt{[[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\
+4 & 4 & \texttt{[[1 2] [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\
+% 5 & 5 & \texttt{[[1 2] [[1 2] [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]} \\
+\hline
+\end{tabular}
+\end{table}
+\end{landscape}
+
+
+
+The construction is Turing-complete, but it does not have laziness, normal-form readback, or sharing.  Each of these properties marks a boundary where the fragment is genuinely insufficient and additional tooling is required.
 
 \section{Conclusion}
 
-To summarize, why did you write it?  Why do we care?  What impact should it have on Urbit development?
-
-Your bibliography is a separate BibTeX file.  We use the \texttt{plainnat} bibliography style.  You can use \texttt{natbib} citation commands like \texttt{\textbackslash citep\{wikipedia\}} for parenthesized references.  Use \texttt{\textbackslash citet\{wikipedia\}} for inline references.  You can also use \texttt{\textbackslash citeauthor\{wikipedia\}} for the principal author's name.
-
-``You can use traditional TeX---or LaTeX---representations'' \citep{Varney1987}.
-
-“Or you can use fancy quotes—and symbols.”
-
-End the article with the tombstone.\tombstone
+This article makes concrete the claim that Nock opcodes 0, 1, and 2 are sufficient to represent the \texttt{SKI} combinator calculus and are thus Turing-complete (if insufficient to handle nouns natively).  The embedding is a constructive proof that the opcode {0, 1, 2} fragment is Turing-complete:  the deferred monograph the \emph{Documentary History} expected is rooted in a handful of lines of Nock.  The compiler is a homomorphism from \texttt{SKI} application to Nock evaluation, under a fixed call-by-value convention.  The combinators are pure construction; opcode 2 appears only in the formula they assemble at application time, carried as quoted data.  A second corollary locates the fragment's edge precisely: a conditional's \emph{selection} is combinatory and lives in {0, 1, 2}, but its \emph{decision}---computing a boolean from data---does not, which motivates Nock's basis as an \texttt{SKI} core plus a minimal inspection and arithmetic kernel.  The Nock \textsc{isa} has been manifestly Turing-complete since its inception, but this exposition makes a new demonstration explicit and constructive.\tombstone
 
 \selectlanguage{USenglish}
 \printbibliography

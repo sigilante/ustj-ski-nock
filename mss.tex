@@ -4,9 +4,9 @@
 
 \addbibresource{mss.bib}
 
-\newcommand{\authorname}{Ernest P. Worrell}
-\newcommand{\authorpatp}{\patp{sampel-palnet}}
-\newcommand{\affiliation}{Kamp Kikakee}
+\newcommand{\authorname}{N.\ E.\ Davis}
+\newcommand{\authorpatp}{\patp{lagrev-nocfep}}
+\newcommand{\affiliation}{ZeroAttest, Groundwire Foundation}
 
 %  Make first page footer:
 \fancypagestyle{firststyle}{%
@@ -23,11 +23,11 @@
 %  Arrange subsequent pages:
 \fancyhf{}
 \fancyhead[LE]{{\urbitfont Urbit Systems Technical Journal}}
-\fancyhead[RO]{Floating-Point Arithmetic on Deterministic Systems}
+\fancyhead[RO]{Representing SKI in Nock ISA}
 \fancyfoot[LE,RO]{\thepage}
 
 %%MANUSCRIPT
-\title{Ernest Goes to Mars:  An Enquiry into the Foundations of Artificial Stupidity}
+\title{Representing the SKI Combinator Calculus in the Nock Instruction Set Architecture}
 \author{\authorname~\authorpatp \\ \affiliation}
 \date{}
 
@@ -37,7 +37,7 @@
 \thispagestyle{firststyle}
 
 \begin{abstract}
-In this groundbreaking paper, we embark on a cosmic journey with the renowned character Ernest P. Worrell as he ventures into the unexplored realm of Martian computing. Drawing inspiration from Ernest's comically ingenious encounters with everyday challenges, we investigate the foundations of what we term "Artificial Stupidity." As Ernest grapples with Martian technology, we delve into the intricacies of programming errors, algorithmic missteps, and the curious phenomena that arise when human-like intelligence meets extraterrestrial computing systems. Our analysis sheds light on the unexpected intersections between humor, artificial intelligence, and the cosmic absurdity of Martian software. Join us in this interplanetary exploration as we unravel the mysteries of Artificial Stupidity through the lens of Ernest's interstellar escapades.
+It has been claimed that the Nock \textsc{isa} closely corresponds to the \texttt{ski} combinator calculus dressed up for nouns.  In particular, opcodes 2, 1, and 0 have been said to correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I}.  This claim is usually stated as an analogy, and the details are elided.  We here make it into an algorithm.  We give a four-rule compiler from arbitrary \texttt{ski} terms to Nock formulas using only opcodes 0, 1, and 2, prove it correct under a fixed application convention, and exercise it on the usual worked examples: the identity laws, Church booleans, the \texttt{B}, \texttt{C}, and \texttt{W} combinators, and Church numerals performing real arithmetic.  The compiled output is verified against an independent Nock 4K interpreter.  The construction is a constructive proof that the Nock fragment of \texttt{0}, \texttt{1}, \texttt{2} opcodes is Turing-complete.  We are explicit about the three properties it does \emph{not} have---laziness, normal-form readback, and sharing---because each marks a boundary where the fragment is genuinely insufficient and additional opcodes are required.
 \end{abstract}
 
 % We will adjust page numbering in final editing.
@@ -48,60 +48,190 @@ In this groundbreaking paper, we embark on a cosmic journey with the renowned ch
 
 \section{Introduction}
 
-Introduce the scope of your article and investigation.
+The Nock instruction set architecture is a combinator calculus sufficient to represent all computable functions.  It has been a longstanding temptation to draw a direct analogy from the Nock \textsc{isa} to the \texttt{ski} combinator calculus.  This analogy claims that the Nock opcodes 2, 1, and 0 correspond to the combinators \texttt{S}, \texttt{K}, and \texttt{I} respectively.  The analogy is usually stated informally, e.g. ``[there are] some subtle differences to Nock's expression of S as opcode 2 that we will elide as being fundamentally similar, but perhaps worthy of its own monograph'' \citep{lagrev2025}.  We here deliver upon that promise and convert an Urbit legend into a concrete demonstration.
 
-\section{Background and Literature}
+The combinatory reading of Nock is well established. Smullyan-style combinator calculi build all computation from a handful of variable-free operators; the \texttt{SKI} system does it with three \citep{Curry1958}, which is neither unique nor minimal but balances convenience with economy.
 
-Exposite the relevant background and literature.
+Put briefly, the \texttt{S} combinator (``substitute'') takes three arguments and applies the first to the third, then applies the second to the third, and finally applies the result of the first application to the result of the second.  The \texttt{K} combinator (```k'onstant'') takes two arguments and returns the first, discarding the second.  The \texttt{I} combinator (``identity'') takes one argument and returns it unchanged.  The \texttt{SKI} system is Turing-complete, meaning that any computable function can be expressed as a combination of these three operators.
 
-\begin{enumerate}
-  \item  Prefer to \texttt{enumerate}.
-  \item  It is easier to refer to than \texttt{itemize}.
-\end{enumerate}
-
-\noindent
-Mark \texttt{\textbackslash noindent} in paragraphs that continue the thought of an \texttt{\textbackslash enumerate} block.
-
-\section{Urbit's Implementation}
-
-Oftentimes you will then turn to exploring how Urbit or closely related systems like Nockchain have approached or considered a problem.  You can look at a PR like \citetpr{urbit_urbit_6891}.
-
-\lstset{language=C}
 \begin{lstlisting}
-#include <stdio.h>
+S x y z = x z (y z)
+K x y = x
+I x = x
+\end{lstlisting}
 
-double compute(float a, float b) {
-    return a * a + b * b;
-}
+The Nock \textsc{isa} is also Turing-complete, and it is natural to ask whether the \texttt{SKI} combinators can be represented in Nock.  The answer is yes, but the details are subtle.  The analogy between Nock opcodes and \texttt{SKI} combinators is not a simple compilation procedure, but a homomorphism that preserves the structure of the computation.
 
-int main() {
-    float x = 2.5;
-    float y = 3.7;
+A straightforward reading of Nock opcode \texttt{0} yielding \texttt{I} is uncontroversial, as \lstinline{[0 1]} trivially returns identity.  The reading of opcode \texttt{1} yielding \texttt{K} is also straightforward, as \lstinline{[1 x]} returns a constant function that discards its argument (subject).  The reading of opcode \texttt{2} yielding \texttt{S} is more subtle, as it requires a fixed convention for how the compiled combinator receives its arguments.  The ``subtle differences'' of \citeauthor{lagrev2025} elision matter more than they appear.  The opcode-to-combinator analogy is not a compilation procedure. SKI terms are curried and higher-order:  combinators are routinely partially applied, and a combinator may be passed as an argument to another combinator. A symbol-for-symbol substitution---writing \texttt{2} for \texttt{S}, \texttt{1} for \texttt{K}, and \texttt{0} for \texttt{I}, with appropriate transposition of arguments into subject and formula---produces nothing runnable the moment \texttt{S} has fewer than three arguments, which is almost always.  What is needed is a \emph{homomorphism}: a translation under which Nock application of compiled terms mirrors SKI reduction, with a fixed convention for how a compiled combinator receives its arguments.
 
-    double result = compute(x, y);
+We supply such a homomorphism as four rules with three small Nock formulas yielding the \texttt{SKI} combinators.  The remainder of this article consists of worked examples, mechanical validation, a cost analysis, and an accounting of the limitations.
 
-    printf("Result: %lf\n", result);
+\section{Preliminaries}
+\label{sxn:preliminaries}
 
-    return 0;
-}
+We assume Nock 4K. Evaluation is the function \lstinline{*[subject formula]}.  We require only three opcodes from the Nock \textsc{isa}:
+
+\begin{lstlisting}[style=nock]
+*[a 0 b]    ->  /[b a]          :: slot: fetch the noun at tree address b
+*[a 1 b]    ->  b               :: quote: return b unchanged
+*[a 2 b c]  ->  *[*[a b] *[a c]] :: eval: compute a subject and a formula, then run
 \end{lstlisting}
 
 \noindent
-That code snippet was part of the text, and not a standalone entity to which we make separate repeated reference.
+plus the structural distribution (autocons) rule, which fires whenever a formula's head is itself a cell:
 
-\begin{figure}
-  \begin{lstlisting}[language=Python, caption={Example Python Code}, label={lst:example}]
-  def hello_world():
-      print("Hello, world!")
-  \end{lstlisting}
-\end{figure}
+\begin{lstlisting}[style=nock]
+*[a [b c] d]  ->  [*[a b c] *[a d]]
+\end{lstlisting}
 
-Refer to the code listing: Listing~\ref{lst:example}.  (Note that we don't suppress indentation since it's a float.)
+Slot address 1 denotes the whole subject, so \lstinline{*[a 0 1] = a}.
 
+A \emph{value} is a Nock formula that consumes its
+argument as the \emph{subject}. To apply a value \lstinline{v} to an argument \lstinline{x}, we evaluate
 
-\section{A Wild Ernest Appears}
+\begin{lstlisting}[style=nock]
+apply(v, x)  ==  *[x v]
+\end{lstlisting}
 
-You can have as many sections as make sense.  Only sections and subsections appear in the table of contents.
+\noindent
+This operative convention inverts the lambda-calculus argument order, because in Nock the function is the formula and the argument is the subject.
+
+\section{Combinator Formulas}
+
+Under the convention of Section~\ref{sxn:preliminaries}, each \texttt{SKI} combinator is a closed Nock formula.  We give each, then verify its defining law by reduction.
+
+\subsection{\texttt{I} identity}
+
+\lstinline{I x = x} requires \lstinline{*[x I] = x}, which is slot 1:
+
+\begin{lstlisting}[style=nock]
+I = [0 1]
+\end{lstlisting}
+
+\subsection{\texttt{K} constant}
+
+Applying `K` to `x` must yield a value that ignores its next argument and returns its value.  Thus \lstinline{K x y = x} requires \lstinline{*[x K] = [1 x]}, which is built from subject \lstinline{x} by autocons:
+
+\begin{lstlisting}[style=nock]
+K = [[1 1] [0 1]]
+\end{lstlisting}
+
+For example,
+
+\begin{lstlisting}[style=nock]
+*[x K] = [*[x [1 1]] *[x [0 1]]] = [1 x]
+\end{lstlisting}
+
+\noindent
+Then for any \lstinline{y}, \lstinline{*[y [1 x]] = x}, so \lstinline{K x y = x} holds.
+
+\subsection{\texttt{S} substitution}
+
+\lstinline{S x y z = (x z)(y z)}. The combinator accumulates \lstinline{x}, then \lstinline{y}, then fires on \lstinline{z}. We construct it bottom-up.
+
+When the fully-applied \lstinline{S x y} finally receives \lstinline{z} as subject, it must produce \lstinline{(x z)(y z)}.  Under the convention, \lstinline{x z = *[z x]} and \lstinline{y z = *[z y]}, and the outer application is \lstinline{*[ *[z y]  *[z x] ]}.  That is precisely opcode 2 with subject \lstinline{z}, formula-\lstinline{b} equal to \lstinline{y}, formula-\lstinline{c} equal to \lstinline{x}:
+
+\begin{lstlisting}[style=nock]
+S x y = [2 y x]
+      ::  *[z [2 y x]] = *[*[z y] *[z x]] = (x z)(y z)
+\end{lstlisting}
+
+Working back one step, applying \lstinline{S x} to \lstinline{y} (subject \lstinline{y}, constant \lstinline{x}) must build the noun \lstinline{[2 y x]}:
+
+\begin{lstlisting}[style=nock]
+S x = [[1 2] [0 1] [1 x]]
+\end{lstlisting}
+
+\noindent
+We check that \lstinline{*[y S x] = [2 y x]}, since \lstinline{*[y [1 2]] = 2}, \lstinline{*[y [0 1]] = y}, and \lstinline{*[y [1 x]] = x}.  Working back the final step, applying \lstinline{S} to \lstinline{x} (subject \lstinline{x}) must build \lstinline{S x}; the first two parts are constants and the third, \lstinline{[1 x]}, is built from \lstinline{x} by the same autocons trick used for \lstinline{K}:
+
+\begin{lstlisting}[style=nock]
+S  =  [[1 [1 2]] [1 [0 1]] [[1 1] [0 1]]]
+\end{lstlisting}
+
+\noindent
+We check:  \lstinline{*[x S] = [[1 2] [0 1] [1 x]] = Sx}.
+
+\subsection{\texttt{B} composition}
+
+Any other combinator can be reached by elaborating its lambda definition to \texttt{SKI} and compiling, but the result is large.  A named combinator is better derived directly, by the same method as the previous subsection:  it becomes one builder layer per argument.  The innermost layer is the opcode-2 application skeleton that fires on the final argument; each enclosing layer is an autocons that captures one argument and embeds it.  We give \texttt{B}, \texttt{C}, and \texttt{W}.
+
+For \lstinline{B f g x = f (g x)}, the firing step computes \lstinline{f} applied to \lstinline{g x}, i.e. \lstinline{*[*[x g] f]}, which is opcode 2 with \lstinline{g} in the formula-\lstinline{b} slot and \lstinline{f} quoted in the formula-\lstinline{c} slot; capturing \lstinline{g} then \lstinline{f} gives:
+
+\begin{lstlisting}[style=nock]
+Bfg = [2 g [1 f]]
+              ::  *[x Bfg] = *[*[x g] f] = f (g x)
+Bf  = [[1 2] [0 1] [1 [1 f]]]
+              ::  *[g Bf]  = [2 g [1 f]]
+B   = [[1 [1 2]] [1 [0 1]] [[1 1] [[1 1] [0 1]]]]
+\end{lstlisting}
+
+\subsection{\texttt{C} transposition}
+
+The same procedure yields \texttt{C} (flip):
+
+\begin{lstlisting}[style=nock]
+C  =  [[1 1 2] [1 [1 1] 0 1] [1 1] 0 1]
+              ::  f x y -> f y x
+\end{lstlisting}
+
+\subsection{\texttt{W} duplicate}
+
+Likewise, \texttt{W} (duplicate):
+
+\begin{lstlisting}[style=nock]
+W  =  [[1 2] [1 0 1] 0 1]
+              ::  f x   -> f x x
+\end{lstlisting}
+
+\subsection{Commentary}
+
+The one subtlety is how a captured argument is embedded, which is dictated by how the combinator uses that argument. If the argument is applied to a computed value (as \texttt{B}'s \lstinline{f} is applied to \lstinline{g x}), it occupies a formula slot and is embedded quoted, \lstinline{[1 f]}.  If it is applied to the current subject (as \texttt{W}'s \lstinline{f} is applied to \lstinline{x}) it must pass through as the live formula, embedded by slot, \lstinline{[0 1]}. Quote where the argument is data; slot where the argument is the active function.
+
+Notably, the value forms of \texttt{B}, \texttt{C}, and \texttt{W} use only Nock opcodes 0 and 1. The opcode 2 appears only in the formula they assemble at application time (\lstinline{[2 g [1 f]]}), carried as quoted data.  The combinators are pure construction; the application machinery is the structure they emit. Among the basis only \texttt{S} carries a 2 in its own body, because it performs two applications at once.
+
+The size payoff over bracket abstraction is large (cell counts; see Section~\ref{sxn:cost} for method):
+
+\begin{tabular}{|l|c|c|c|}
+ & direct & via \texttt{ski} & ratio \\
+\texttt{B} & 11 & 208 & ~19× \\
+\texttt{C} & 11 & 208 & ~19× \\
+\texttt{W} & 6 & 130 & ~22× \\
+\end{tabular}
+
+The two forms are extensionally identical on every input tested.  For any combinator known by name, direct derivation is preferred and the abstraction tax is avoided entirely; bracket abstraction remains the general fallback for arbitrary lambda terms.
+
+\section{Compilation of the Homomorphism}
+
+Let \lstinline{[[t]]} denote a \emph{closed} Nock formula whose product is the value of the \texttt{SKI}
+term \lstinline{t}. The compiler is four rules:
+
+\begin{lstlisting}[style=nock]
+[[S]]    =  [1 S]
+[[K]]    =  [1 K]
+[[I]]    =  [1 I]
+[[A B]]  =  [2 [[B]] [[A]]]
+\end{lstlisting}
+
+\noindent
+with \lstinline{S}, \lstinline{K}, \lstinline{I} the formulas of §3. The combinators are \emph{quoted} so that
+\lstinline{[[·]]} always denotes a value-producing computation; application is opcode 2 applied to the two compiled operands.
+
+Why quote, and why this order?  Evaluating `[[A B]] = [2 [[B]] [[A]]]`
+against any subject `s` gives `*[ *[s [[B]]]  *[s [[A]]] ]`. Because `[[B]]` and
+`[[A]]` are closed, they ignore `s` and reduce to the values `val(B)` and
+`val(A)`. The result is `*[val(B) val(A)]` — apply value `val(A)` to argument
+`val(B)`, i.e. `A` applied to `B`. The operands are reduced to values *before*
+application, which is what makes nested applications compose correctly; quoting
+a sub-application rather than evaluating it produces an off-by-one error (a
+residual `K` where the value was expected).
+
+**Correctness.** By induction on term structure. The base cases are §3. For
+application, the rule computes `apply(val(A), val(B))`, and by the induction
+hypothesis `val(A)`, `val(B)` are the values of `A`, `B`; by §2 this is the
+value of `A B`. The translation is therefore a homomorphism from SKI
+application to Nock evaluation, under the call-by-value strategy forced by
+opcode 2's eager semantics (see §8).
 
 \section{Conclusion}
 

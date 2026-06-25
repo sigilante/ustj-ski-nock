@@ -1,0 +1,73 @@
+<svg viewBox="0 0 820 318" xmlns="http://www.w3.org/2000/svg" font-family="Georgia, 'Times New Roman', serif">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/>
+    </marker>
+    <style>
+      .ink{fill:#1a1a1a}.mut{fill:#6b6b6b}.rust{fill:#9b3a2e}
+      .mono{font-family:'DejaVu Sans Mono','Courier New',monospace}
+      .ttl{font-size:15px;font-style:italic}
+      .stg{font-size:12.5px}.lab{font-size:12px;font-weight:bold;letter-spacing:.04em}
+      .note{font-size:12px}
+      .bsel{fill:none;stroke:#1a1a1a;stroke-width:1.3}
+      .bdec{fill:none;stroke:#9b3a2e;stroke-width:1.3;stroke-dasharray:5 3}
+    </style>
+  </defs>
+
+  <text x="410" y="26" text-anchor="middle" class="ink ttl">Nock opcode 6  =  decision &#8728; selection</text>
+
+  <!-- pipeline stages -->
+  <g class="stg">
+    <!-- 1 input -->
+    <rect class="bsel" x="14"  y="58" width="112" height="56" rx="3" stroke="#6b6b6b"/>
+    <text x="70"  y="83"  text-anchor="middle" class="mut">subject</text>
+    <text x="70"  y="101" text-anchor="middle" class="ink mono">a</text>
+
+    <!-- 2 predicate (decision) -->
+    <rect class="bdec" x="158" y="58" width="126" height="56" rx="3"/>
+    <text x="221" y="82"  text-anchor="middle" class="ink">run test</text>
+    <text x="221" y="100" text-anchor="middle" class="rust mono">*[a b] &#8594; 0|1</text>
+
+    <!-- 3 loobean->axis (decision) -->
+    <rect class="bdec" x="316" y="58" width="126" height="56" rx="3"/>
+    <text x="379" y="82"  text-anchor="middle" class="ink">loobean &#8594; axis</text>
+    <text x="379" y="100" text-anchor="middle" class="rust mono">++ : 0&#8594;2  1&#8594;3</text>
+
+    <!-- 4 select (selection) -->
+    <rect class="bsel" x="474" y="58" width="126" height="56" rx="3"/>
+    <text x="537" y="82"  text-anchor="middle" class="ink">select branch</text>
+    <text x="537" y="100" text-anchor="middle" class="ink mono">/[axis [c d]]</text>
+
+    <!-- 5 run (selection) -->
+    <rect class="bsel" x="632" y="58" width="134" height="56" rx="3"/>
+    <text x="699" y="82"  text-anchor="middle" class="ink">run the chosen</text>
+    <text x="699" y="100" text-anchor="middle" class="ink mono">*[a &#183;]</text>
+  </g>
+
+  <!-- arrows -->
+  <g>
+    <line x1="126" y1="86" x2="156" y2="86" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#a2)"/>
+    <line x1="284" y1="86" x2="314" y2="86" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#a2)"/>
+    <line x1="442" y1="86" x2="472" y2="86" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#a2)"/>
+    <line x1="600" y1="86" x2="630" y2="86" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#a2)"/>
+  </g>
+
+  <!-- brackets -->
+  <!-- decision bracket under stages 2-3 -->
+  <path d="M158,128 L158,140 L442,140 L442,128" class="bdec" fill="none"/>
+  <text x="300" y="160" text-anchor="middle" class="rust lab">DECISION</text>
+  <text x="300" y="178" text-anchor="middle" class="rust note">inspects a value &#183; opcodes 3, 4, 5</text>
+  <text x="300" y="194" text-anchor="middle" class="rust note">not expressible in {0, 1, 2}</text>
+
+  <!-- selection bracket under stages 4-5 -->
+  <path d="M474,128 L474,140 L766,140 L766,128" class="bsel" fill="none"/>
+  <text x="620" y="160" text-anchor="middle" class="ink lab">SELECTION</text>
+  <text x="620" y="178" text-anchor="middle" class="mut note">routes nouns &amp; runs one &#183; opcodes {0, 1, 2}</text>
+  <text x="620" y="194" text-anchor="middle" class="mut note">= our IF, given a boolean</text>
+
+  <!-- divider + summary -->
+  <line x1="14" y1="222" x2="766" y2="222" stroke="#cfcabb" stroke-width="1"/>
+  <text x="14" y="248" class="ink note">Church booleans (<tspan class="mono">K</tspan>, <tspan class="mono">K I</tspan>) supply the selector for free; with thunked branches it is lazy &#8212; the unchosen branch never runs:</text>
+  <text x="14" y="270" class="ink mono note">IF cond tf ef s  =  [2 [1 s] [2 [1 ef] [2 [1 tf] [1 cond]]]]</text>
+  <text x="14" y="298" class="mut note">The fragment can <tspan font-style="italic">route</tspan> a boolean it is handed. It cannot <tspan font-style="italic">compute</tspan> one from data &#8212; the first thing {0, 1, 2} cannot do.</text>
+</svg>

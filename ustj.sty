@@ -15,10 +15,12 @@
   Scale=MatchLowercase,
   % BoldFont=Urbit Sans Mono TT Light,
   ]
-\newcommand{\nocklfloor}{{\monofont\symbol{"230A}}}
-\newcommand{\nockrfloor}{{\monofont\symbol{"230B}}}
-\newcommand{\nockomega}{{\monofont\symbol{"03C9}}}
-\newcommand{\nockOmega}{{\monofont\symbol{"03A9}}}
+\newlength{\nockmonocolwidth}
+\newcommand{\nockmonochar}[2]{{\begingroup\monofont\settowidth{\nockmonocolwidth}{0}\makebox[\nockmonocolwidth][#1]{#2}\endgroup}}
+\newcommand{\nocklfloor}{\nockmonochar{l}{\symbol{"230A}}}
+\newcommand{\nockrfloor}{\nockmonochar{r}{\symbol{"230B}}}
+\newcommand{\nockomega}{\nockmonochar{c}{\symbol{"03C9}}}
+\newcommand{\nockOmega}{\nockmonochar{c}{\symbol{"03A9}}}
 \renewcommand{\setmonofont}{\monofont}
 \renewcommand{\texttt}[1]{{\monofont #1}}
 % Define a new font family for small caps with FakeSlant
@@ -99,17 +101,18 @@
     upquote=true,
     breaklines=true,
     breakatwhitespace=true,
-    literate={⌊}{{\nocklfloor}}1 {⌋}{{\nockrfloor}}1 {ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
+    literate={ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
     commentstyle=\color{darkgray}\emph,
     keywordstyle=\bfseries,
-    moredelim=[is][\underline]{@}{@}
+    moredelim=[is][\underline]{@}{@},
+    escapeinside={(*@}{@*)}
 }
 \lstdefinestyle{listingblock}{
     language=Hoon,
     basicstyle=\setmonofont\small,
     numbers=left, numberstyle=\tiny, stepnumber=5, firstnumber=1, numberfirstline=false,
     tabsize=2,
-    columns=fixed,
+  columns=fullflexible,
     showstringspaces=false,
     showtabs=false,
     showspaces=false,
@@ -117,10 +120,11 @@
     upquote=true,
     breaklines=true,
     breakatwhitespace=true,
-    literate={⌊}{{\nocklfloor}}1 {⌋}{{\nockrfloor}}1 {ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
+    literate={ω}{{\nockomega}}1 {Ω}{{\nockOmega}}1,
     commentstyle=\color{darkgray}\emph,
     keywordstyle=\bfseries,
-    moredelim=[is][\underline]{@}{@}
+    moredelim=[is][\underline]{@}{@},
+    escapeinside={(*@}{@*)}
 }
 \lstdefinestyle{listingcode_python}{
     language=Python,

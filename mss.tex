@@ -413,11 +413,12 @@ In explicit Nock \texttt{SKI} form, the Church numeral successor function become
 \begin{lstlisting}[style=listingblock]
 succ = [[1 1 2] [0 1] 1 [1 1] 0 1]
 
-church 2 = [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1]
-⌊church 2⌋ = 2
-succ (church 2) = [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1] [1 1] 0 1] [1 1] 0 1]
-
-⌊succ (church 2)⌋ = 3
+church 2 = [[1 2] [[1 2] [1 0 1] [1 1] 0 1]
+           [1 1] 0 1]
+(*@\nocklfloor@*)church 2(*@\nockrfloor@*) = 2
+succ (church 2) = [[1 2] [[1 2] [[1 2] [1 0 1] [1 1] 0 1]
+                   [1 1] 0 1] [1 1] 0 1]
+(*@\nocklfloor@*)succ (church 2)(*@\nockrfloor@*) = 3
 \end{lstlisting}
 
 Arithmetic over the Church numerals is defined by the usual combinator formulas:
@@ -445,11 +446,11 @@ church 5 succ 0   = 5
 (mult 3 4) succ 0 = 12
 
 ::  in Nock decoding:
-⌊church 0⌋ = 0
-⌊church 3⌋ = 3
-⌊church 5⌋ = 5
-⌊plus 2 3⌋ = 5
-⌊mult 3 4⌋ = 12
+(*@\nocklfloor@*)church 0(*@\nockrfloor@*) = 0
+(*@\nocklfloor@*)church 3(*@\nockrfloor@*) = 3
+(*@\nocklfloor@*)church 5(*@\nockrfloor@*) = 5
+(*@\nocklfloor@*)plus 2 3(*@\nockrfloor@*) = 5
+(*@\nocklfloor@*)mult 3 4(*@\nockrfloor@*) = 12
 \end{lstlisting}
 
 \begin{landscape}

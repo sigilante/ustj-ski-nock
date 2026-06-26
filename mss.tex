@@ -91,6 +91,8 @@ plus the structural distribution (autocons) rule, which fires whenever a formula
 \end{lstlisting}
 
 \noindent
+This distribution rule is not an opcode but the structural behavior of \texttt{*} when a formula's head is a cell; it is Nock's only means to construct a cell from evaluated components.  Basically every combinator formula in this paper has a cell head and so depends on it; the construction therefore uses opcodes 0, 1, 2 together with distribution.
+
 Slot address 1 denotes the whole subject, so \lstinline[style=inlinecode]{*[a 0 1] = a}.
 
 A \emph{value} is a Nock formula that consumes its
@@ -547,7 +549,7 @@ This is precisely the shape of Nock's own conditional.  Opcode 6 is trivially de
 
 \section{Conclusion}
 
-The \texttt{SKI} construction in Nock \textsc{isa} is Turing-complete, but it does not have laziness, normal-form readback, or sharing.  Each of these properties marks a boundary where the fragment is genuinely insufficient and additional tooling beyond \{0, 1, 2\} is required.
+The \texttt{SKI} construction in Nock \textsc{isa} is Turing-complete, but it does not have laziness, normal-form readback, or sharing.  Each of these properties marks a boundary where the fragment is genuinely insufficient and additional tooling beyond \{0, 1, 2\} plus the structural distribution rule is required.
 
 This article makes concrete the claim that Nock opcodes 0, 1, and 2 are sufficient to represent the \texttt{SKI} combinator calculus and are thus Turing-complete (if insufficient to handle nouns natively).  The embedding is a constructive proof that the opcode {0, 1, 2} fragment is Turing-complete:  the deferred monograph the \emph{Documentary History} expected is rooted in a handful of lines of Nock.  The compiler is a homomorphism from \texttt{SKI} application to Nock evaluation, under a fixed call-by-value convention.  The combinators are pure construction; opcode 2 appears only in the formula they assemble at application time, carried as quoted data.  A second corollary locates the fragment's edge precisely: a conditional's \emph{selection} is combinatory and lives in {0, 1, 2}, but its \emph{decision}---computing a boolean from data---does not, which motivates Nock's basis as an \texttt{SKI} core plus a minimal inspection and arithmetic kernel.  The Nock \textsc{isa} has been manifestly Turing-complete since its inception, but this exposition makes a new demonstration explicit and constructive.\tombstone
 

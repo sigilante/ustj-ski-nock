@@ -105,6 +105,8 @@ apply(v, x)  ==  *[x v]
 \noindent
 This operative convention inverts the lambda-calculus argument order, because in Nock the function is the formula and the argument is the subject.
 
+Prior art exists for \texttt{SKI} using the Nock \textsc{isa} carried out by \citet{Torre2024} in Racket; his strategy for \texttt{S} and \texttt{I} anticipated and are identical to ours, but his formulation of \texttt{K} relied on Nock opcode 8, as well as opcodes 3 and 6 for adaptively partial application, which is out of scope for our argument.  (We resolve the tension of partial application via autocons rather than opcode 8.)  \citeauthor{Torre2024} permitted the outer entry point \texttt{nock(E)} to accept an expression \texttt{E} written in a ``Nock Intermediate Representation'' syntax, that is, with \texttt{*} annotations in front of sub-expressions to force an evaluation order.  The Racket code also has a second, concatenative encoding (\texttt{I = [0 1]}, \texttt{K = [0 3]}, \texttt{S = [[0 2] [[1 2] [0 3]]]}) for which all arguments sit in the subject as a stack.  This is elegant and concise but, as he notes, it cannot curry.\footnote{This approach merits further investigation.}  Finally, \citeauthor{Torre2024} also introduced a formulation of the \texttt{Z} combinator as the strict fixed point for eagerly evaluated languages.
+
 \section{Combinator Formulas}
 \label{sxn:combinators}
 
@@ -223,12 +225,12 @@ The two forms are extensionally identical on every input tested.  For any combin
 \section{Compilation of the Homomorphism}
 
 Let \lstinline[style=inlinecode]{[[t]]} denote a \emph{closed} Nock formula whose product is the value of the \texttt{SKI}
-term \lstinline[style=inlinecode]{t}. The compiler consists of four rules:
+term \lstinline[style=inlinecode]{t}. The compiler consists of four rules from bracket abstraction to Nock \textsc{isa}:
 
 \begin{lstlisting}[style=listingblock]
-[[S]]   = [1 S]
-[[K]]   = [1 K]
-[[I]]   = [1 I]
+[[S]]   = [1 S]   = [1 [1 [1 2]] [1 [0 1]] [[1 1] [0 1]]]
+[[K]]   = [1 K]   = [1 [1 1] [0 1]]
+[[I]]   = [1 I]   = [1 0 1]
 [[A B]] = [2 [[B]] [[A]]]
 \end{lstlisting}
 
@@ -543,7 +545,7 @@ This conditional is genuinely lazy.\footnote{Setting the unchosen branch to a cr
 code.}  The discipline this requires is exact:  branches must be kept as quoted
 formulas rather than compiled as combinator sub-terms.  Compile a divergent branch and the eager opcode 2 forces it before selection ever happens (the \texttt{K I Ω} divergence).  Thunking the branch keeps it inert until forced; this is similar to stored procedures in conventional Nock using cores with opcode 9.
 
-What the \texttt{SKI}/\{0, 1, 2\} fragment cannot do effectively is manufacture the boolean.  \lstinline[style=inlinecode]{IF} above routes on a boolean it is handed; to branch on a property of data (``is this atom zero", ``is this noun a cell"), one must first map a datum to \lstinline[style=inlinecode]{K} or \lstinline[style=inlinecode]{K I}, and that inspection reads an atom's value or tests cell-ness.  Neither is expressible in pure \{0, 1, 2\}.  Selecting on a given boolean is free; deciding what the boolean should be requires the cell test (opcode 3), increment, equality (opcode 5), or negation (built with opcode 6 on opcode 5).
+What the \texttt{SKI}/\{0, 1, 2\} fragment cannot do effectively is manufacture the boolean.  \lstinline[style=inlinecode]{IF} above routes on a boolean it is handed; to branch on a property of data (atom as zero, cell-ness, etc.), one must first map a datum to \lstinline[style=inlinecode]{K} or \lstinline[style=inlinecode]{K I}, and that inspection reads an atom's value or tests cell-ness.  Neither is expressible in pure \{0, 1, 2\} because these have no notion of reading out structure.\footnote{An objection may be made that opcode 0 does have an explicit notion of structure due to cell addressing, but there is no mechanism in non-virtualized (direct) Nock to utilize this without crashing.}  Selecting on a given boolean is free; deciding what the boolean should be requires the cell test (opcode 3), increment, equality (opcode 5), or negation (built with opcode 6 on opcode 5).
 
 This is precisely the shape of Nock's own conditional.  Opcode 6 is trivially derivable from opcodes 0–5, and what it adds over the selector above is the data-derived predicate:  run a formula \texttt{b} to compute a loobean on the subject, map that loobean to an address (using opcode 4) to pick one of two formulas, and run only the chosen one.  The combinatory core we have built here is the selection half; the predicate half is a partial motivation for opcodes 3, 4, and 5 as minimal additions to the \texttt{SKI} basis rather than merely conveniences.
 

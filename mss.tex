@@ -521,7 +521,7 @@ Three properties bound the construction. Each is a real boundary, not a deficien
 
 A normalizer must additionally return the normal form in an inspectable form, which means recognizing combinators at runtime, which the \{0, 1, 2\} fragment cannot do.  In other words, when an \texttt{SKI} evaluator completes, it has a normal form or a tree whose leaves are \texttt{S}, \texttt{K}, \texttt{I} and whose internal nodes are applications.  To print that normal form (to ``read it back"), one walks the tree and at each node decides if it is a leaf or an application, and if a leaf, which combinator?
 
-\item \textbf{No sharing.}  This is tree reduction. \lstinline[style=inlinecode]{S} copies its argument with no sharing, so terms with shared redexes blow up exponentially.  This is moderately acceptable as an intermediate representation to compile through, but impractical as a runtime for large terms, which want graph reduction.
+\item \textbf{No sharing.}  This is tree reduction. \lstinline[style=inlinecode]{S} copies its argument with no sharing, so terms with shared redexes blow up exponentially.  This is moderately acceptable as an intermediate representation to compile through, but impractical as a runtime for large terms, which want graph reduction.  (The Nock runtime itself may ameliorate the situation.)
 \end{enumerate}
 
 \noindent
